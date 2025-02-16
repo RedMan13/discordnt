@@ -564,6 +564,7 @@ export const Member = {
     pending: [boolean, null],                     // whether the user has not yet passed the guild's Membership Screening requirements
     permissions: [string, null],                  // total permissions of the member in the channel, including overwrites, returned when in the interaction object
     communication_disabled_until: [string, null], // when the user's timeout will expire and the user will be able to communicate in the guild again, null or a time in the past if the user is not timed out
+    unusual_dm_activity_until: [string, null],    // skee BEE dee
     avatar_decoration_data: {                     // data for the member's guild avatar decoration
         asset: string, // the avatar decoration hash
         sku_id: string // id of the avatar decoration's SKU
