@@ -183,20 +183,6 @@
         .card-wrapper {
             font-family: "Comic Sans MS" sans-serif;
         }
-        .card {
-            background-color: white;
-            border-color: darkgrey;
-            border-style: solid;
-            border-width: 1px;
-            border-radius: 4px;
-            box-shadow: 0px 0px 20px black;
-            overflow: hidden;
-            position: absolute;
-            z-index: 1;
-            width: 480px;
-            height: 360px;
-            padding: 1px;
-        }
         @keyframes popupAlarm {
             from {
                 top: -752px
@@ -324,6 +310,101 @@
             background-color: rgba(0,0,0, 25%);
         }
     </style>
+    <!-- Login bootstrap -->
+    <style>
+        dialog {
+            background-color: white;
+            border-color: darkgrey;
+            border-style: solid;
+            border-width: 1px;
+            border-radius: 4px;
+            box-shadow: 0px 0px 20px black;
+            overflow: hidden;
+            position: absolute;
+            z-index: 1;
+            aspect-ratio: 55/39;
+            width: 425px;
+            min-width: 425px;
+            padding: 0px;
+        }
+        dialog::backdrop {
+            background: linear-gradient(to bottom, rgb(48, 127, 201) 0px, #0195FA 100vh);
+        }
+        dialog form {
+            padding: 10px;
+        }
+        dialog .header {
+            width: 100%;
+            background-color: #999;
+        }
+        dialog .header h3 {
+            text-align: center;
+            margin: 0px;
+            padding: 10px;
+        }
+        dialog .label {
+            margin-top: 5px;
+            font-size: small;
+            font-weight: bold;
+            color: #444;
+            display: inline-block;
+        }
+        dialog input[type="email"],
+        dialog input[type="password"] {
+            padding: 5px;
+            border-radius: 5px;
+            border-width: 1px;
+            border-color: grey;
+            width: calc(100% - 11px);
+        }
+        dialog input[type="submit"] {
+            padding: 5px;
+            border-radius: 5px;
+            border-width: 1px;
+            border-color: grey;
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+        }
+    </style>
+    <dialog id="login-prompt">
+        <div class="header"><h3>Login to Your Account</h3></div>
+        <form method="dialog">
+            <span class="label">Email:</span><br>
+            <input type="email" name="login" id="email" placeholder="some-person@here.net"/><br>
+            <span class="label">Password:</span><br>
+            <input type="password" name="pass" id="password" placeholder="⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅"/><br>
+            <blockquote>WARN! Accounts with authenticators are currenty unsupported. If discord requests for a captcha this prompt will fail.</blockquote>
+            <br>
+            <input type="submit" id="login" value="Login"/>
+        </form>
+    </dialog>
+    <script>
+        /** @type {HTMLDialogElement} */
+        const dia = document.getElementById('login-prompt');
+        /** @type {HTMLInputElement} */
+        const email = document.getElementById('email');
+        /** @type {HTMLInputElement} */
+        const pass = document.getElementById('password');
+        /** @type {HTMLInputElement} */
+        const submit = document.getElementById('login');
+        if (!localStorage.token) dia.showModal();
+        submit.onclick = async () => {
+            const req = await fetch('https://discord.com/api/v9/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    login: email.value,
+                    password: pass.value,
+                    undelete: true
+                })
+            });
+            if (!req.ok) return location.reload();
+            const res = await req.json();
+            localStorage.token = res.token;
+            location.reload();
+        }
+    </script>
 </head>
 <body style="margin: 0; height: 100vh; font-family: 'Open Sans', serif;" class="card-wrapper">
     <div class="browser close" style="width: 180px; left: -180px; box-shadow: 0 0 0px black;" id="browser" hidden>"filejson"</div>
