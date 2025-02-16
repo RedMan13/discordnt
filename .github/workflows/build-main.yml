@@ -1,0 +1,30 @@
+on: [push]
+
+permissions:
+  contents: read
+
+concurrency: 
+  group: "deploy"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20.x
+      - name: Install dependencies and build site
+        run: |
+          npm i
+          npx build
+      - name: Push built to Site
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+        with:
+          server: 's3.serv00.com'
+          username: 'godslayerakp'
+          password: '${{ secrets.SSH_PASSWORD }}'
+          local_path: './dist/discordnt.html'
+          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/discordnt.html'
