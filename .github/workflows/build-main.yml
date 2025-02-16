@@ -27,4 +27,4 @@ jobs:
           username: 'godslayerakp'
           password: '${{ secrets.SSH_PASSWORD }}'
           local_path: './dist/discordnt.html'
-          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_html/discordnt.html'
+          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_html'
