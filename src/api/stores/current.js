@@ -71,6 +71,7 @@ export class Current {
         } else this.changed.push(id);
     }
     getGuildSort(id) {
+        if (!this.settings.guildFolders) return 0;
         const sort = this.settings.guildFolders.guildPositions.findIndex(guild => guild == id);
         return sort < 0 ? null : sort;
     }
@@ -78,27 +79,29 @@ export class Current {
         const added = [];
         const folders = [];
         const guilds = this.client.store('Guilds');
-        for (const folder of this.settings.guildFolders.folders) {
-            added.push(...folder.guildIds.map(String));
-            const servers = folder.guildIds
-                .map(guild => guilds.get(guild));
-            const id = String(folder.id?.value ?? servers[0].id);
-            added.push(id);
-            const name = folder.name?.value ??
-                servers.length <= 1 
-                    ? servers[0].name 
-                    : servers
-                        .slice(0, -1)
-                        .map(folder => folder.name)
-                        .join(', ') + 
-                        ' and ' + servers[0].name
-            folders.push({
-                id,
-                name,
-                color: folder.color?.value || 0x5865F2,
-                sort: this.getGuildSort(id),
-                servers
-            });
+        if (this.settings.guildFolders) {
+            for (const folder of this.settings.guildFolders.folders) {
+                added.push(...folder.guildIds.map(String));
+                const servers = folder.guildIds
+                    .map(guild => guilds.get(guild));
+                const id = String(folder.id?.value ?? servers[0].id);
+                added.push(id);
+                const name = folder.name?.value ??
+                    servers.length <= 1 
+                        ? servers[0].name 
+                        : servers
+                            .slice(0, -1)
+                            .map(folder => folder.name)
+                            .join(', ') + 
+                            ' and ' + servers[0].name
+                folders.push({
+                    id,
+                    name,
+                    color: folder.color?.value || 0x5865F2,
+                    sort: this.getGuildSort(id),
+                    servers
+                });
+            }
         }
         for (const [id, guild] of guilds) {
             if (!added.includes(id)) {
