@@ -1,0 +1,83 @@
+syntax = "proto3";
+import "./proto-versioning.proto";
+
+message FrecencyItem {  
+    uint32 total_uses = 1;
+    repeated uint64 recent_uses = 2 [packed=true];
+    int32 frecency = 3;
+    int32 score = 4;
+}
+
+message FrecencyUserSettings { 
+    Versions versions = 1;
+    message FavoriteGIFs { 
+        message FavoriteGIF { 
+            enum GIFType {
+                NONE = 0;
+                IMAGE = 1;
+                VIDEO = 2;
+            } 
+            GIFType format = 1;
+            string src = 2;
+            uint32 width = 3;
+            uint32 height = 4;
+            uint32 order = 5;
+        } 
+        map<string, FavoriteGIF> gifs = 1;
+        bool hide_tooltip = 2;
+    } 
+    FavoriteGIFs favorite_gifs = 2;
+    
+    message FavoriteStickers { 
+        repeated fixed64 sticker_ids = 1 [packed=true]; 
+    } 
+    FavoriteStickers favorite_stickers = 3;
+   
+    message StickerFrecency { 
+        map<fixed64, FrecencyItem> stickers = 1;
+    } 
+    StickerFrecency sticker_frecency = 4;
+   
+    message FavoriteEmojis { 
+        repeated string emojis = 1 [packed=false]; 
+    } 
+    FavoriteEmojis favorite_emojis = 5;
+   
+    message EmojiFrecency { 
+        map<string, FrecencyItem> emojis = 1;
+    } 
+    EmojiFrecency emoji_frecency = 6;
+   
+    message ApplicationCommandFrecency { 
+        map<string, FrecencyItem> application_commands = 1;
+    } 
+    ApplicationCommandFrecency application_command_frecency = 7;
+   
+    message FavoriteSoundboardSounds { 
+        repeated fixed64 sound_ids = 1 [packed=true]; 
+    } 
+    FavoriteSoundboardSounds favorite_soundboard_sounds = 8;
+   
+    message ApplicationFrecency { 
+        map<string, FrecencyItem> applications = 1;
+    } 
+    ApplicationFrecency application_frecency = 9;
+   
+   
+    message HeardSoundFrecency { 
+        map<string, FrecencyItem> heard_sounds = 1;
+    } 
+    HeardSoundFrecency heard_sound_frecency = 10;
+   
+    message PlayedSoundFrecency { 
+        map<string, FrecencyItem> played_sounds = 1;
+    } 
+    PlayedSoundFrecency played_sound_frecency = 11;
+   
+    message GuildAndChannelFrecency { 
+        map<fixed64, FrecencyItem> guild_and_channels = 1;
+    } 
+    GuildAndChannelFrecency guild_and_channel_frecency = 12;
+   
+    EmojiFrecency emoji_reaction_frecency = 13;
+}

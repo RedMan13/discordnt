@@ -1,0 +1,17 @@
+<svg
+  viewBox="0 0 10 10"
+  width="10"
+  height="10"
+  fill="none"
+  stroke="grey"
+  stroke-width="1"
+  stroke-linecap="round"
+  xmlns="http://www.w3.org/2000/svg">
+  <path d="
+    M 5 0
+    v 10
+
+    M 5 5
+    h 4
+  "/>
+</svg>

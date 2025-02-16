@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>DiscordNT</title>
+    <meta name="author" content="godslayerakp">
+    <meta name="description" content="a rebuilt from-the-grounp-up version of the discord gui">
+    <meta name="keywords" content="discord,client,mod,tampermonkey,userscript">
+    <meta name="creator" content="godslayerakp">
+    <meta name="theme-color" content="white">
+    <meta name="color-scheme" content="light">
+    <meta name="robots" content="nosnippet">
+    <meta name="keywords" content="gsa,godslayerakp,redman13,thyme1time23,giveminecraftstone,building-x">
+    <meta name="theme-color" content="white">
+    <meta name="color-scheme" content="light">
+    <script>
+        const elementClassNames = {
+            "a": 'HTMLAnchorElement',
+            "area": 'HTMLAreaElement',
+            "audio": 'HTMLAudioElement',
+            "base": 'HTMLBaseElement',
+            "blockquote": 'HTMLQuoteElement',
+            "body": 'HTMLBodyElement',
+            "br": 'HTMLBRElement',
+            "button": 'HTMLButtonElement',
+            "canvas": 'HTMLCanvasElement',
+            "caption": 'HTMLTableCaptionElement',
+            "col": 'HTMLTableColElement',
+            "colgroup": 'HTMLTableColElement',
+            "data": 'HTMLDataElement',
+            "datalist": 'HTMLDataListElement',
+            "del": 'HTMLModElement',
+            "details": 'HTMLDetailsElement',
+            "dialog": 'HTMLDialogElement',
+            "dir": 'HTMLDirectoryElement',
+            "div": 'HTMLDivElement',
+            "dl": 'HTMLDListElement',
+            "embed": 'HTMLEmbedElement',
+            "fencedframe": 'HTMLUnknownElement',
+            "fieldset": 'HTMLFieldSetElement',
+            "font": 'HTMLFontElement',
+            "form": 'HTMLFormElement',
+            "frame": 'HTMLFrameElement',
+            "frameset": 'HTMLFrameSetElement',
+            "h1": 'HTMLHeadingElement',
+            "head": 'HTMLHeadElement',
+            "hr": 'HTMLHRElement',
+            "html": 'HTMLHtmlElement',
+            "iframe": 'HTMLIFrameElement',
+            "img": 'HTMLImageElement',
+            "input": 'HTMLInputElement',
+            "ins": 'HTMLModElement',
+            "label": 'HTMLLabelElement',
+            "legend": 'HTMLLegendElement',
+            "li": 'HTMLLIElement',
+            "link": 'HTMLLinkElement',
+            "map": 'HTMLMapElement',
+            "marquee": 'HTMLMarqueeElement',
+            "menu": 'HTMLMenuElement',
+            "meta": 'HTMLMetaElement',
+            "meter": 'HTMLMeterElement',
+            "object": 'HTMLObjectElement',
+            "ol": 'HTMLOListElement',
+            "optgroup": 'HTMLOptGroupElement',
+            "option": 'HTMLOptionElement',
+            "output": 'HTMLOutputElement',
+            "p": 'HTMLParagraphElement',
+            "param": 'HTMLParamElement',
+            "picture": 'HTMLPictureElement',
+            "portal": 'HTMLUnknownElement',
+            "pre": 'HTMLPreElement',
+            "progress": 'HTMLProgressElement',
+            "q": 'HTMLQuoteElement',
+            "script": 'HTMLScriptElement',
+            "select": 'HTMLSelectElement',
+            "slot": 'HTMLSlotElement',
+            "source": 'HTMLSourceElement',
+            "span": 'HTMLSpanElement',
+            "style": 'HTMLStyleElement',
+            "table": 'HTMLTableElement',
+            "tbody": 'HTMLTableSectionElement',
+            "td": 'HTMLTableCellElement',
+            "template": 'HTMLTemplateElement',
+            "textarea": 'HTMLTextAreaElement',
+            "tfoot": 'HTMLTableSectionElement',
+            "th": 'HTMLTableCellElement',
+            "thead": 'HTMLTableSectionElement',
+            "time": 'HTMLTimeElement',
+            "title": 'HTMLTitleElement',
+            "tr": 'HTMLTableRowElement',
+            "track": 'HTMLTrackElement',
+            "ul": 'HTMLUListElement',
+            "video": 'HTMLVideoElement',
+            "xmp": 'HTMLPreElement'
+        };
+        // loose def for elements that dont require any direct manipulation
+        function defineElement(name, attributes, innerGen) {
+            const extend = attributes.extends;
+            /** @type {HTMLElement} */
+            const elClass = window[elementClassNames[extend]] ?? HTMLElement;
+            let onAttributes;
+            class newElement extends elClass {
+                static observedAttributes = Object.keys(attributes)
+                    .filter(key => !key.startsWith('on') && !['extends', 'attributes'].includes(key));
+                display = null;
+                priv = {};
+                constructor() {
+                    if (extend) 
+                        return document.createElement(extend, { is: name });
+                    super();
+                    if (!this.display) this.display = this.attachShadow({ mode: 'open' });
+                    innerGen.apply(this, [this.display]);
+                    for (const [key, val] of Object.entries(attributes)) {
+                        if (key.startsWith('on')) {
+                            this.addEventListener(key.slice(2), val.bind(this));
+                            continue;
+                        }
+                        this.setAttribute(key, val);
+                    }
+                }
+                attributeChangedCallback(key, oldVal, newVal) {
+                    onAttributes?.apply?.(this, [key, oldVal, newVal]);
+                    if (key in newElement.prototype) return;
+                    this[key] = newVal;
+                }
+            }
+            for (const key in attributes) {
+                if (key.startsWith('on')) {
+                    switch (key.slice(3)) {
+                    case 'connected':
+                        newElement.prototype.connectedCallback = attributes[key];
+                        delete attributes[key];
+                        break;
+                    case 'disconnected':
+                        newElement.prototype.disconnectedCallback = attributes[key];
+                        delete attributes[key];
+                        break;
+                    case 'adopted':
+                        newElement.prototype.adoptedCallback = attributes[key];
+                        delete attributes[key];
+                        break;
+                    case 'attributes':
+                        onAttributes = attributes[key];
+                        delete attributes[key];
+                        break;
+                    }
+                    continue;
+                }
+            }
+            if (attributes.attributes) {
+                newElement.observedAttributes = attributes.attributes;
+                delete attributes.attributes;
+            }
+            if (attributes.this) {
+                Object.assign(newElement.prototype, attributes.this);
+                delete attributes.this;
+            }
+            delete attributes.extends;
+            customElements.define(name, newElement, { extends: attributes.extends });
+            return newElement;
+        }
+        function appendChildren(parent, children) {
+            children.forEach(child => {
+                if (!child) return;
+                if (Array.isArray(child))
+                    return appendChildren(parent, child);
+
+                try { parent.appendChild(child); }
+                catch (e) {
+                    parent.appendChild(document.createTextNode(String(child)));
+                }
+            });
+        }
+        /** @param {HTMLElement} el */
+        function setAttribute(el, key, val) {
+            if (val) el.setAttribute(key, typeof val === 'object' ? JSON.stringify(val) : val);
+            else el.removeAttribute(key);
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+
+        .card-wrapper {
+            font-family: "Comic Sans MS" sans-serif;
+        }
+        .card {
+            background-color: white;
+            border-color: darkgrey;
+            border-style: solid;
+            border-width: 1px;
+            border-radius: 4px;
+            box-shadow: 0px 0px 20px black;
+            overflow: hidden;
+            position: absolute;
+            z-index: 1;
+            width: 480px;
+            height: 360px;
+            padding: 1px;
+        }
+        @keyframes popupAlarm {
+            from {
+                top: -752px
+            }
+            to {
+                top: -330px
+            }
+        }
+        .animateAlarm {
+            animation-duration: 1s;
+            animation-name: popupAlarm;
+            top: -330px;
+            position: absolute;
+        }
+        @keyframes popupTimer {
+            from {
+                top: -752px
+            }
+            to {
+                top: -7px
+            }
+        }
+        .animateTimer {
+            animation-duration: 1s;
+            animation-name: popupTimer;
+            top: -7px;
+            position: absolute;
+        }
+        .horizontalCenter {
+            text-align: center;
+        }
+
+        .browser {
+            position: absolute;
+            background-color: white;
+            border-color: darkgrey;
+            border-style: solid;
+            border-width: 1px;
+            border-bottom-right-radius: 8px;
+            border-left-width: 0;
+            bottom: 0px;
+            height: 100%;
+            overflow: auto;
+            z-index: 3;
+        }
+        .close-browser {
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
+            background-color: white;
+            border-color: darkgrey;
+            border-style: solid;
+            border-width: 1px;
+            border-left-width: 0;
+            position: absolute;
+            z-index: 5;
+        }
+        .browser .folder {
+            padding-left: 1em;
+            cursor: pointer;
+        }
+        .browser .folder span {
+            padding-left: 0.1em;
+        }
+        .browser .folder.noicon {
+            padding-left: 1em;
+        }
+        .browser .folder.resolves {
+            padding-left: 1em;
+        }
+        .browser .folder.opened.noicon::before {
+            content: 'v';
+            font-weight: bold;
+            display: inline-block;
+            text-align: center;
+            height: 1em;
+            width: 1em;
+        }
+        .browser .folder.closed.noicon::before {
+            content: 'v';
+            font-weight: bold;
+            display: inline-block;
+            transform: rotate(-90deg);
+            text-align: center;
+            height: 1em;
+            width: 1em;
+        }
+        .browser .folder.opened div {
+            display: block;
+        }
+        .browser .folder.closed div {
+            display: none;
+        }
+        .browser .file {
+            padding-left: 1em;
+            cursor: pointer;
+        }
+        .browser .file span {
+            padding-left: 0.1em;
+        }
+        .browser .file.noicon {
+            padding-left: 1em;
+        }
+        .browser .file.selected {
+            background-color: rgb(192, 192, 192);
+            border-top-color: grey;
+            border-top-width: 1px;
+            border-top-style: solid;
+            border-bottom-color: grey;
+            border-bottom-width: 1px;
+            border-bottom-style: solid;
+        }
+        .browser img {
+            width: 1em;
+            height: 1em;
+            object-fit: fill;
+            vertical-align: sub;
+        }
+        .browser {
+            overflow-y: hidden;
+        }
+        .guild-folder:hover {
+            background-color: rgba(0,0,0, 25%);
+        }
+        .guild-channel:hover {
+            background-color: rgba(0,0,0, 25%);
+        }
+    </style>
+</head>
+<body style="margin: 0; height: 100vh; font-family: 'Open Sans', serif;" class="card-wrapper">
+    <div class="browser close" style="width: 180px; left: -180px; box-shadow: 0 0 0px black;" id="browser" hidden>"filejson"</div>
+    <button id="close-browser" style="left: 0px;" class="close-browser close" hidden>&gt;</button>
+    <div style="
+        position: absolute;
+        width: 10px;
+        cursor: ew-resize;
+        height: 100%;
+        left: -5px;
+        z-index: 4;
+
+        display: flex;
+        justify-content: left;
+        align-items: center;
+    " id="resize">
+        <div style="
+            width: 0px;
+            height: 40px;
+            border-top-left-radius: 5px;
+            border-bottom-left-radius: 5px;
+            border: 1px solid grey;
+            border-right-width: 0;
+            padding: 4px 2px;
+            background-color: white;
+        ">
+            <div style="
+                border-left: 1px solid black;
+                height: 100%;
+            "></div>
+        </div>
+    </div>
+    <script file="jsx">   
+        /** @import { BrowserFolder } from './builder/precomp-manager.js' */
+        const sortOrder = 'abcdefghijklmnopqrstuvwxyz';
+        /**
+         * makes a browser
+         * @param {BrowserFolder} json - the filesystem-shape to be displayed in the browser
+         * @param {boolean} makeTop - if or if not to return only the inner members of the folder or the raw folder
+         * @return {HTMLDivElement} - the browser
+         */
+        function makeBrowser(json, makeTop = true) {
+            /** @type {HTMLDivElement} */
+            const folder = <div 
+                class={`folder ${
+                    json.resolve || json.selected 
+                        ? 'opened' 
+                        : 'closed'
+                } ${!json.icon 
+                        ? json.resolve 
+                            ? 'resolves'
+                            : 'noicon' 
+                        : ''
+                }`}
+                on:click={e => {
+                    e.stopPropagation();
+                    if (!json.resolve) {
+                        folder.classList.toggle('opened');
+                        folder.classList.toggle('closed');
+                    } else window.open(json.resolve, '_self');
+                }}
+            >
+                {json.icon
+                    ? <img src={json.icon} />
+                    : null
+                }
+                <span>{json.name}</span>
+                <div>{
+                    json.members.sort((a,b) => {
+                        const aHasSort = typeof a.sort !== 'undefined';
+                        const bHasSort = typeof b.sort !== 'undefined'; 
+                        const aHasName = typeof a.name !== 'undefined';
+                        const bHasName = typeof b.name !== 'undefined'; 
+                        if (a.members && b.resolve && !aHasSort) return -1;
+                        if (a.resolve && b.members && !bHasSort) return 1;
+                        const aName = (!aHasSort && aHasName)
+                            ? [...a.name.toLowerCase()]
+                                .reverse()
+                                .map((char, idx) => sortOrder.indexOf(char) * idx)
+                                .reduce((pre, cur) => pre + cur, 0)
+                            : a.sort;
+                        const bName = (!bHasSort && bHasName)
+                            ? [...b.name.toLowerCase()]
+                                .reverse()
+                                .map((char, idx) => sortOrder.indexOf(char) * idx)
+                                .reduce((pre, cur) => pre + cur, 0)
+                            : b.sort;
+                        return aName - bName;
+                    })
+                    .map(file => Array.isArray(file.members) 
+                        ? makeBrowser(file, false)
+                        : <div class={`file ${
+                            file.selected 
+                                ? 'selected' 
+                                : ''
+                            } ${!file.icon 
+                                ? 'noicon' 
+                                : ''
+                            }`}
+                            on:click={e => {
+                                e.stopPropagation();
+                                window.open(file.resolve, '_self');
+                            }}
+                        >
+                            {file.icon
+                                ? <img src={file.icon} />
+                                : null
+                            }
+                            <span>{file.name}</span>
+                        </div>)
+                }</div>
+            </div>;
+            return makeTop ? folder.getElementsByTagName('div')[0] : folder;
+        }
+        function interpol(start, end, percent) {
+            return start + (end - start) * percent;
+        }
+
+        /** @type {HTMLDivElement} */
+        const browser = document.getElementById('browser');
+        /** @type {HTMLButtonElement} */
+        const close = document.getElementById('close-browser');
+        /** @type {HTMLDivElement} */
+        const resize = document.getElementById('resize');
+
+        let toOpen = 0;
+        let start = null;
+        let holdingResize = false;
+        function getMaxBrowserWidth() {
+            return browser.parentElement.clientWidth - close.offsetWidth;
+        }
+        function getBrowserWidth() {
+            return +browser.style.width.slice(0, -2);
+        }
+        function setBrowserWidth(width) {
+            localStorage.broswerLeft = width;
+            browser.style.width = `${width}px`;
+            if (browser.classList.contains('close')) {
+                browser.style.left = `${-width}px`;
+            } else {
+                close.style.left = `${width}px`;
+                resize.style.left = `${width - 5}px`;
+            }
+        }
+        function setBrowserPosition(pos) {
+            browser.style.left = `${pos - getBrowserWidth()}px`;
+            close.style.left = `${pos}px`;
+            resize.style.left = `${pos - 5}px`;
+        }
+        function enableBrowser() {
+            browser.hidden = false;
+            close.hidden = false;
+        }
+        function clearBrowser() {
+            browser.innerHTML = '';
+        }
+        function copySelections(pages) {
+            for (const el of browser.children) {
+                const selNam = el.getElementsByTagName('span')[0];
+                const folder = pages.find(({ name }) => selNam === name);
+                if (!folder || !folder.members) continue;
+                copySelections(folder.members);
+                folder.selected = el.classList.has('opened');
+            }
+        }
+        function updateBrowser(pages) {
+            if (!pages?.members) return;
+            const html = makeBrowser(pages);
+            html.style.width = 'max-content';
+            copySelections(pages.members);
+            clearBrowser();
+            browser.appendChild(html);
+        }
+
+        close.onclick = e => {
+            browser.classList.toggle('open');
+            browser.classList.toggle('close');
+            close.classList.toggle('open');
+            close.classList.toggle('close');
+            close.innerText = close.classList.contains('open') ? '<' : '>';
+            const width = +browser.style.width.slice(0, -2);
+            toOpen = close.classList.contains('open') ? 2 : -2;
+        }
+
+        resize.onmousedown = () => holdingResize = true;
+        document.onmouseup = () => holdingResize = false;
+        document.onmousemove = e => {
+            if (!holdingResize) return;
+            if (browser.classList.contains('close')) {
+                toOpen = 0;
+                setBrowserWidth(0);
+                setBrowserPosition(0);
+                browser.style.boxShadow = `0 0 20px black`;
+                close.innerText = '<';
+                browser.classList.add('open');
+                browser.classList.remove('close');
+                close.classList.add('open');
+                close.classList.remove('close');
+            }
+            const maxWidth = getMaxBrowserWidth();
+            const width = getBrowserWidth();
+            setBrowserWidth(Math.max(Math.min(width + (e.movementX / window.scale), maxWidth), 0))
+        }
+
+        function tick(timer) {
+            requestAnimationFrame(tick);
+            if (!toOpen) return;
+            const width = +browser.style.width.slice(0, -2);
+            const goal = toOpen < 0 ? 0 : width
+            const butLeft = +close.style.left.slice(0, -2);
+            if (Math.abs(toOpen) >= 2) {
+                start = timer;
+                toOpen = Math.sign(toOpen);
+            }
+            if (Math.abs(goal - butLeft) < 0.5) {
+                setBrowserPosition(goal, false);
+                browser.style.boxShadow = `0 0 ${toOpen < 0 ? 0 : 20}px black`;
+                toOpen = 0;
+                return;
+            }
+            const inter = Math.abs(timer - start) / 500;
+            const resLeft = interpol(butLeft, goal, inter);
+            setBrowserPosition(resLeft, false);
+            const shadow = +browser.style.boxShadow.split(' ')[2].slice(0, -2);
+            const resShadow = interpol(shadow, toOpen < 0 ? 0 : 20, inter);
+            browser.style.boxShadow = `0 0 ${resShadow}px black`;
+        }
+        requestAnimationFrame(tick);
+
+        /** @type {BrowserFolder} */
+        const files = JSON.parse(browser.innerText);
+        /** @type {Array<string>} */
+        const pages = (localStorage.pages || location.pathname).split(',');
+        if (!pages.includes(location.pathname)) pages.push(location.pathname);
+        if (files.pages <= pages.length || true) {
+            enableBrowser();
+            updateBrowser(files);
+        }
+        localStorage.pages = pages.join();
+        setBrowserWidth(+localStorage.broswerLeft || 180);
+    </script>
+    <div style="
+        width: 100%; 
+        height: 100%; 
+        overflow-wrap: break-word; 
+        overflow-x: hidden; 
+        overflow-y: auto; 
+        position: absolute;
+    ">
+        <div id="main"></div>
+    </div>
+</body>
+<script src="./src/index.jsx"></script>

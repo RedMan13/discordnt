@@ -1,0 +1,330 @@
+syntax = "proto3";
+import "./proto-versioning.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+message PreloadedUserSettings {
+    message Versions {
+        uint32 client_version = 1;
+        uint32 server_version = 2;
+        uint32 data_version = 3;
+    }
+    Versions versions = 1;
+    message InboxSettings {
+        enum InboxTab {
+            UNSPECIFIED = 0;
+            MENTIONS = 1;
+            UNREADS = 2;
+            TODOS = 3;
+            FOR_YOU = 4;
+            GAME_INVITES = 5;
+            BOOKMARKS = 6;
+        }
+        InboxTab current_tab = 1;
+        bool viewed_tutorial = 2;
+    }
+    InboxSettings inbox = 2;
+    message AllGuildSettings {
+        message GuildSettings {
+            message ChannelSettings {
+                bool collapsed_in_inbox = 1;
+                message ChannelIconEmoji {
+                    UInt64Value id = 1;
+                    StringValue name = 2;
+                    UInt64Value color = 3;
+                }
+                ChannelIconEmoji icon_emoji = 2;
+                message CustomNotificationSoundConfig {
+                    StringValue notification_sound_pack_id = 1;
+                }
+                CustomNotificationSoundConfig custom_notification_sound_config = 3;
+            }
+            map<fixed64, ChannelSettings> channels = 1;
+            uint32 hub_progress = 2;
+            uint32 guild_onboarding_progress = 3;
+            Timestamp guild_recents_dismissed_at = 4;
+            bytes dismissed_guild_content = 5;
+            message CustomCallSound {
+                fixed64 sound_id = 1;
+                fixed64 guild_id = 2;
+            }
+            CustomCallSound join_sound = 6;
+            message ChannelListSettings {
+                StringValue layout = 1;
+                StringValue message_previews = 2;
+            }
+            ChannelListSettings mobile_redesign_channel_list_settings = 7;
+            bool disable_raid_alert_push = 8;
+            bool disable_raid_alert_nag = 9;
+            CustomNotificationSoundConfig custom_notification_sound_config = 10;
+            bool leaderboards_disabled = 11;
+        }
+        map<fixed64, GuildSettings> guilds = 1;
+    }
+    AllGuildSettings guilds = 3;
+    message UserContentSettings {
+        bytes dismissed_contents = 1;
+        StringValue last_dismissed_outbound_promotion_start_date = 2;
+        Timestamp premium_tier_0_modal_dismissed_at = 3;
+        Timestamp guild_onboarding_upsell_dismissed_at = 4;
+        Timestamp safety_user_sentiment_notice_dismissed_at = 5;
+        fixed64 last_received_changelog_id = 6;
+        message RecurringDismissibleContentState {
+            uint32 last_dismissed_version = 1;
+        }
+        map<int32, RecurringDismissibleContentState> recurring_dismissible_content_states = 7;
+    }
+    UserContentSettings user_content = 4;
+    message VoiceAndVideoSettings {
+        message VideoFilterBackgroundBlur {
+            bool use_blur = 1;
+        }
+        VideoFilterBackgroundBlur blur = 1;
+        uint32 preset_option = 2;
+        message VideoFilterAsset {
+            fixed64 id = 1;
+            string asset_hash = 2;
+        }
+        VideoFilterAsset custom_asset = 3;
+        BoolValue always_preview_video = 5;
+        UInt32Value afk_timeout = 6;
+        BoolValue stream_notifications_enabled = 7;
+        BoolValue native_phone_integration_enabled = 8;
+        message SoundboardSettings {
+            float volume = 1;
+        }
+        SoundboardSettings soundboard_settings = 9;
+        BoolValue disable_stream_previews = 10;
+    }
+    VoiceAndVideoSettings voice_and_video = 5;
+    message TextAndImagesSettings {
+        StringValue diversity_surrogate = 1;
+        BoolValue use_rich_chat_input = 2;
+        BoolValue use_thread_sidebar = 3;
+        StringValue render_spoilers = 4;
+        repeated string emoji_picker_collapsed_sections = 5 [packed=false];
+        repeated string sticker_picker_collapsed_sections = 6 [packed=false];
+        BoolValue view_image_descriptions = 7;
+        BoolValue show_command_suggestions = 8;
+        BoolValue inline_attachment_media = 9;
+        BoolValue inline_embed_media = 10;
+        BoolValue gif_auto_play = 11;
+        BoolValue render_embeds = 12;
+        BoolValue render_reactions = 13;
+        BoolValue animate_emoji = 14;
+        UInt32Value animate_stickers = 15;
+        BoolValue enable_tts_command = 16;
+        BoolValue message_display_compact = 17;
+        UInt32Value explicit_content_filter = 19;
+        BoolValue view_nsfw_guilds = 20;
+        BoolValue convert_emoticons = 21;
+        BoolValue expression_suggestions_enabled = 22;
+        BoolValue view_nsfw_commands = 23;
+        BoolValue use_legacy_chat_input = 24;
+        repeated string soundboard_picker_collapsed_sections = 25 [packed=false];
+        UInt32Value dm_spam_filter = 26;
+        enum DmSpamFilterV2 {
+            DEFAULT_UNSET = 0;
+            DISABLED = 1;
+            NON_FRIENDS = 2;
+            FRIENDS_AND_NON_FRIENDS = 3;
+        }
+        DmSpamFilterV2 dm_spam_filter_v2 = 27;
+        BoolValue include_stickers_in_autocomplete = 28;
+        message ExplicitContentSettings {
+            enum ExplicitContentRedaction {
+                UNSET_EXPLICIT_CONTENT_REDACTION = 0;
+                SHOW = 1;
+                BLUR = 2;
+                BLOCK = 3;
+            }
+            ExplicitContentRedaction explicit_content_guilds = 1;
+            ExplicitContentRedaction explicit_content_friend_dm = 2;
+            ExplicitContentRedaction explicit_content_non_friend_dm = 3;
+        }
+        ExplicitContentSettings explicit_content_settings = 29;
+        message KeywordFilterSettings {
+            BoolValue profanity = 1;
+            BoolValue sexual_content = 2;
+            BoolValue slurs = 3;
+        }
+        KeywordFilterSettings keyword_filter_settings = 30;
+    }
+    TextAndImagesSettings text_and_images = 6;
+    message NotificationSettings {
+        BoolValue show_in_app_notifications = 1;
+        BoolValue notify_friends_on_go_live = 2;
+        fixed64 notification_center_acked_before_id = 3;
+        BoolValue enable_burst_reaction_notifications = 4;
+        BoolValue quiet_mode = 5;
+        fixed64 focus_mode_expires_at_ms = 6;
+        enum ReactionNotificationType {
+            NOTIFICATIONS_ENABLED = 0;
+            ONLY_DMS = 1;
+            NOTIFICATIONS_DISABLED = 2;
+        }
+        ReactionNotificationType reaction_notifications = 7;
+    }
+    NotificationSettings notifications = 7;
+    message PrivacySettings {
+        BoolValue allow_activity_party_privacy_friends = 1;
+        BoolValue allow_activity_party_privacy_voice_channel = 2;
+        repeated fixed64 restricted_guild_ids = 3 [packed=true];
+        bool default_guilds_restricted = 4;
+        bool allow_accessibility_detection = 7;
+        BoolValue detect_platform_accounts = 8;
+        BoolValue passwordless = 9;
+        BoolValue contact_sync_enabled = 10;
+        UInt32Value friend_source_flags = 11;
+        UInt32Value friend_discovery_flags = 12;
+        repeated fixed64 activity_restricted_guild_ids = 13 [packed=true];
+        enum GuildActivityStatusRestrictionDefault {
+            OFF = 0;
+            ON_FOR_LARGE_GUILDS = 1;
+        }
+        GuildActivityStatusRestrictionDefault default_guilds_activity_restricted = 14;
+        repeated fixed64 activity_joining_restricted_guild_ids = 15 [packed=true];
+        repeated fixed64 message_request_restricted_guild_ids = 16 [packed=true];
+        BoolValue default_message_request_restricted = 17;
+        BoolValue drops_opted_out = 18;
+        BoolValue non_spam_retraining_opt_in = 19;
+        BoolValue family_center_enabled = 20;
+        BoolValue family_center_enabled_v2 = 21;
+        BoolValue hide_legacy_username = 22;
+        BoolValue inappropriate_conversation_warnings = 23;
+        BoolValue recent_games_enabled = 24;
+        enum GuildsLeaderboardOptOutDefault {
+            OFF_FOR_NEW_GUILDS = 0;
+            ON_FOR_NEW_GUILDS = 1;
+        }
+        GuildsLeaderboardOptOutDefault guilds_leaderboard_opt_out_default = 25;
+    }
+    PrivacySettings privacy = 8;
+    message DebugSettings {
+        BoolValue rtc_panel_show_voice_states = 1;
+    }
+    DebugSettings debug = 9;
+    message GameLibrarySettings {
+        BoolValue install_shortcut_desktop = 1;
+        BoolValue install_shortcut_start_menu = 2;
+        BoolValue disable_games_tab = 3;
+    }
+    GameLibrarySettings game_library = 10;
+    message StatusSettings {
+        StringValue status = 1;
+        message CustomStatus {
+            string text = 1;
+            fixed64 emoji_id = 2;
+            string emoji_name = 3;
+            fixed64 expires_at_ms = 4;
+            fixed64 created_at_ms = 5;
+        }
+        CustomStatus custom_status = 2;
+        BoolValue show_current_game = 3;
+        fixed64 status_expires_at_ms = 4;
+    }
+    StatusSettings status = 11;
+    message LocalizationSettings {
+        StringValue locale = 1;
+        Int32Value timezone_offset = 2;
+    }
+    LocalizationSettings localization = 12;
+    message AppearanceSettings {
+        enum Theme {
+            UNSET = 0;
+            DARK = 1;
+            LIGHT = 2;
+            DARKER = 3;
+            MIDNIGHT = 4;
+        }
+        Theme theme = 1;
+        bool developer_mode = 2;
+        message ClientThemeSettings {
+            UInt32Value background_gradient_preset_id = 2;
+        }
+        ClientThemeSettings client_theme_settings = 3;
+        bool mobile_redesign_disabled = 4;
+        StringValue channel_list_layout = 6;
+        StringValue message_previews = 7;
+        BoolValue search_result_exact_count_enabled = 8;
+    }
+    AppearanceSettings appearance = 13;
+    message GuildFolders {
+        message GuildFolder {
+            repeated fixed64 guild_ids = 1 [packed=true];
+            Int64Value id = 2;
+            StringValue name = 3;
+            UInt64Value color = 4;
+        }
+        repeated GuildFolder folders = 1 [packed=true];
+        repeated fixed64 guild_positions = 2 [packed=true];
+    }
+    GuildFolders guild_folders = 14;
+    message Favorites {
+        message FavoriteChannel {
+            string nickname = 1;
+            enum FavoriteChannelType {
+                UNSET_FAVORITE_CHANNEL_TYPE = 0;
+                REFERENCE_ORIGINAL = 1;
+                CATEGORY = 2;
+            }
+            FavoriteChannelType type = 2;
+            uint32 position = 3;
+            fixed64 parent_id = 4;
+        }
+        map<fixed64, FavoriteChannel> favorite_channels = 1;
+        bool muted = 2;
+    }
+    Favorites favorites = 15;
+    message AudioSettings {
+        message AudioContextSetting {
+            bool muted = 1;
+            float volume = 2;
+            fixed64 modified_at = 3;
+            bool soundboard_muted = 4;
+        }
+        map<fixed64, AudioContextSetting> user = 1;
+        map<fixed64, AudioContextSetting> stream = 2;
+    }
+    AudioSettings audio_context_settings = 16;
+    message CommunitiesSettings {
+        BoolValue disable_home_auto_nav = 1;
+    }
+    CommunitiesSettings communities = 17;
+    message BroadcastSettings {
+        BoolValue allow_friends = 1;
+        repeated fixed64 allowed_guild_ids = 2 [packed=true];
+        repeated fixed64 allowed_user_ids = 3 [packed=true];
+        BoolValue auto_broadcast = 4;
+    }
+    BroadcastSettings broadcast = 18;
+    message ClipsSettings {
+        BoolValue allow_voice_recording = 1;
+    }
+    ClipsSettings clips = 19;
+    message ForLaterSettings {
+        enum ForLaterTab {
+            UNSPECIFIED = 0;
+            ALL = 1;
+            BOOKMARKS = 2;
+            REMINDERS = 3;
+        }
+        ForLaterTab current_tab = 1;
+    }
+    ForLaterSettings for_later = 20;
+    message SafetySettings {
+        enum SafetySettingsPresetType {
+            UNSET_SAFETY_SETTINGS_PRESET = 0;
+            BALANCED = 1;
+            STRICT = 2;
+            RELAXED = 3;
+            CUSTOM = 4;
+        }
+        SafetySettingsPresetType safety_settings_preset = 1;
+    }
+    SafetySettings safety_settings = 21;
+    message ICYMISettings {
+        fixed64 feed_generated_at = 1;
+    }
+    ICYMISettings icymi_settings = 22;
+}
