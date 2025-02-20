@@ -6,12 +6,13 @@ const ZLIB_SUFFIX = new Uint8Array([255, 255, 0, 0]);
 const gateway = 'wss://gateway.discord.gg';
 
 export default class ApiInterface extends EventSource {
+    #token = null;
     constructor(token, version = 9) {
         super();
         this.mustAuthImediat = false;
         this.reconUrl = gateway;
         this.sessionId = null;
-        this.token = token ?? localStorage.token;
+        this.#token = token;
         this.version = version;
         this.stores = [];
 
@@ -42,6 +43,7 @@ export default class ApiInterface extends EventSource {
 
         this.apiReqs = {};
     }
+    set token(token) { this.#token = token; this.reconnect(true, 'New Token'); }
 
     fromApi(callPath, body) {
         if (this.apiReqs[callPath]) return this.apiReqs[callPath];
@@ -51,7 +53,7 @@ export default class ApiInterface extends EventSource {
         const opts = {
             method,
             headers: {
-                'Authorization': this.token,
+                'Authorization': this.#token,
                 'Content-Type': 'application/json'
             }
         }
@@ -106,13 +108,15 @@ export default class ApiInterface extends EventSource {
         this.websocket.onmessage = this.onmessage.bind(this);
         this.websocket.onerror = this.onerror.bind(this);
         this.websocket.onclose = this.onclose.bind(this);
+        this.emit('reconnect', message);
     }
     onopen() {
+        this.emit('open');
         if (this.mustAuthImediat) {
             // always unset because this is for an explicit task that can not be reiterated elsewhen
             this.mustAuthImediat = false;
             this.send(6, {
-                token: this.token,
+                token: this.#token,
                 session_id: this.sessionId,
                 seq: this.seq
             });
@@ -120,6 +124,7 @@ export default class ApiInterface extends EventSource {
     }
     onmessage(e) {
         const data = new Uint8Array(e.data);
+        this.emit('message', data);
         const msgBuf = this.msgBuf;
         this.msgBuf = new Uint8Array(msgBuf.length + data.length);
         this.msgBuf.set(msgBuf);
@@ -131,26 +136,27 @@ export default class ApiInterface extends EventSource {
         }
     }
     onpacket({ op: opcode, d: data, s: seq, t: event }) {
+        this.emit('packet', { opcode, data, seq, event });
         if (seq) this.seq = seq;
         if (event) return this.onevent(event, data);
         console.log('gateway op:', GatewayOpcode[opcode] ?? opcode, 'd:', data, 's:', seq, 't:', event);
         switch (opcode) {
         case GatewayOpcode.Heartbeat:
-            this.send(11);
+            this.send(GatewayOpcode.HeartbeatACK);
             break;
         case GatewayOpcode.Reconnect:
             this.reconnect(false, 'server requested reconnect');
             break;
         case GatewayOpcode.InvalidSession:
-            this.reconnect(true, 'invalid session');
+            this.emit('invalid');
             break;
         case GatewayOpcode.Hello:
             this.heart = setInterval(() => {
                 if (this.waitingResponse) return this.reconnect(false, 'no pong to our ping')
-                this.send(1, this.seq)
+                this.send(GatewayOpcode.Heartbeat, this.seq)
             }, data.heartbeat_interval);
-            this.send(2, {
-                "token": this.token,
+            this.send(GatewayOpcode.Identify, {
+                "token": this.#token,
                 "capabilities": 16381,
                 "properties": {
                     "os": "Win32",
@@ -194,13 +200,16 @@ export default class ApiInterface extends EventSource {
         this.emit(event, data);
     }
     onerror() {
+        this.emit('error');
         this.reconnect(false, 'websocket errored');
     }
     onclose() {
+        this.emit('close');
         clearInterval(this.heart);
     }
 
     send(opcode, data) {
+        this.emit('packet', { opcode, data });
         console.log('gateway op:', GatewayOpcode[opcode] ?? opcode, 'd:', data);
         const obj = {
             op: opcode,

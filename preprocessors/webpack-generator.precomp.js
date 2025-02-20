@@ -59,73 +59,83 @@ async function getDeepFiles(file, manager, props) {
     out[0][1] = data;
     return out;
 }
+async function jsGen(locPath, util) {
+    const files = await getDeepFiles(locPath, util, { type: 'js' });
+    if (!files) return util.skip = true;
+    let jsGen = 'const webpackFiles = {';
+    for (const [file, data] of files) {
+        jsGen += JSON.stringify('./' + path.relative(util.entry, file));
+        jsGen += '(module,exports,require) {';
+        jsGen += data;
+        jsGen += '},';
+    }
+    jsGen += '};';
+    jsGen += `
+    class ImportError extends Error {}
+    const validExts = ['.js', '.mjs', '.cjs', '.json'];
+    const ranFiles = {};
+    function genReq(root) {
+        return function require(file) {
+            const old = file;
+            let path = root.split('/');
+            const instructs = file.split('/');
+            for (const inst of instructs) {
+                switch (inst) {
+                case '.': break;
+                case '..': 
+                    if (path.at(-1) === '..' || path.length <= 0)
+                        path.push('..');
+                    else 
+                        path.pop(); 
+                    break;
+                default: path.push(inst); break;
+                }
+            }
+            const allTried = [];
+            file = path.join('/');
+            let triedExt = 0;
+            let triedNode = false;
+            while (!(file in webpackFiles)) {
+                allTried.push(file);
+                if (path.at(-1) === 'index' && !validExts[triedExt] && triedNode)
+                    throw new ImportError(\`Could not locate a module at ./\${path.slice(2, -1).join('/')} from \${root}. tried \${JSON.stringify(allTried, null, 4)}\`);
+                if (path.at(-1) === 'index' && !validExts[triedExt] && !triedNode) {
+                    path = old.split('/');
+                    path.unshift('.', 'node_modules');
+                    triedExt = 0;
+                    triedNode = true;
+                }
+                if (!validExts[triedExt]) { path.push('index'); triedExt = 0; }
+                file = path.join('/');
+                file += validExts[triedExt++];
+            }
+            if (file in ranFiles)
+                return ranFiles[file].exports;
+            const module = { exports: {} };
+            ranFiles[file] = module;
+            webpackFiles[file](module, module.exports, genReq(file.split('/').slice(0, -1).join('/')));
+            return module.exports;
+        }
+    }
+    genReq('.')(${JSON.stringify(path.relative(util.entry, locPath))});
+    `;
+    return jsGen;
+}
 module.exports = async function(util) {
+    if (util.path.endsWith('js')) {
+        if (!util.file.startsWith('#!')) return;
+        util.file = jsGen(util.path, util);
+        return;
+    }
     for (const m of util.file.matchAll(/<script.*?>/gi)) {
         const src = m[0].match(/src="(.*?)"/i);
         if (!src) continue;
         const locPath = (await resolveImport(path.dirname(util.path), src[1], util))[2];
-        const files = await getDeepFiles(locPath, util, { type: 'js' });
-        if (!files) return util.skip = true;
-        let jsGen = 'const webpackFiles = {';
-        for (const [file, data] of files) {
-            jsGen += JSON.stringify('./' + path.relative(util.entry, file));
-            jsGen += '(module,exports,require) {';
-            jsGen += data;
-            jsGen += '},';
-        }
-        jsGen += '};';
-        jsGen += `
-        class ImportError extends Error {}
-        const validExts = ['.js', '.mjs', '.cjs', '.json'];
-        const ranFiles = {};
-        function genReq(root) {
-            return function require(file) {
-                const old = file;
-                let path = root.split('/');
-                const instructs = file.split('/');
-                for (const inst of instructs) {
-                    switch (inst) {
-                    case '.': break;
-                    case '..': 
-                        if (path.at(-1) === '..' || path.length <= 0)
-                            path.push('..');
-                        else 
-                            path.pop(); 
-                        break;
-                    default: path.push(inst); break;
-                    }
-                }
-                const allTried = [];
-                file = path.join('/');
-                let triedExt = 0;
-                let triedNode = false;
-                while (!(file in webpackFiles)) {
-                    allTried.push(file);
-                    if (path.at(-1) === 'index' && !validExts[triedExt] && triedNode)
-                        throw new ImportError(\`Could not locate a module at ./\${path.slice(2, -1).join('/')} from \${root}. tried \${JSON.stringify(allTried, null, 4)}\`);
-                    if (path.at(-1) === 'index' && !validExts[triedExt] && !triedNode) {
-                        path = old.split('/');
-                        path.unshift('.', 'node_modules');
-                        triedExt = 0;
-                        triedNode = true;
-                    }
-                    if (!validExts[triedExt]) { path.push('index'); triedExt = 0; }
-                    file = path.join('/');
-                    file += validExts[triedExt++];
-                }
-                if (file in ranFiles)
-                    return ranFiles[file].exports;
-                const module = { exports: {} };
-                ranFiles[file] = module;
-                webpackFiles[file](module, module.exports, genReq(file.split('/').slice(0, -1).join('/')));
-                return module.exports;
-            }
-        }
-        genReq('.')(${JSON.stringify(path.relative(util.entry, locPath))});
-        `;
-        util.replace(src.index + m.index, src.index + m.index + src[0].length, `>${jsGen}</script`);
+        const start = src.index + m.index;
+        const end = start + src[0].length;
+        util.replace(start, end, `>${await jsGen(locPath, util)}</script`);
         for (const key in handled)
             delete handled[key];
     }
 }
-module.exports.matchFile = util => util.matchType('html,php');
+module.exports.matchFile = util => util.matchType('html,php,js,mjs,cjs');

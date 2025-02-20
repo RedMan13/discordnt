@@ -69,10 +69,10 @@ export const TimeStamp = <define
             this.display.textContent = dateStyle[style](time);
         }
     }}
-    onconnected={function() {
+    on:connected={function() {
         this.render();
         if (!this.priv.intr) this.priv.intr = setInterval(this.render.bind(this), 1000);
     }}
-    ondisconnected={function() { if (this.priv.intr) clearInterval(this.priv.intr) }}
-    onattributes={function() { this.render(); }}
+    on:disconnected={function() { if (this.priv.intr) clearInterval(this.priv.intr) }}
+    on:attributes={function() { this.render(); }}
 />

@@ -7,7 +7,18 @@ import { Guilds } from "./api/stores/guilds.js";
 import { Current } from "./api/stores/current.js";
 import { Roles } from "./api/stores/roles.js";
 import { Members } from "./api/stores/members.js";
-window.client = new ApiInterface();
+import { GatewayOpcode } from './api/type-enums.js';
+labelLoadingStage('Connecting client to server.');
+window.client = new ApiInterface(parse['Token'], 9);
+client.on('open', () => labelLoadingStage('Connected to discords gateway'));
+client.on('packet', ({ opcode }) => {
+    switch (opcode) {
+    case GatewayOpcode.Hello: 
+        labelLoadingStage('Recieved discords Hello packet. Awaiting authorization'); 
+        break;
+    }
+});
+client.on('invalid', () => requireLogin());
 const current  = new Current(client);  client.stores.push(current);
 const channels = new Channels(client); client.stores.push(channels);
 const users    = new Users(client);    client.stores.push(users);
@@ -17,21 +28,31 @@ const members  = new Members(client);  client.stores.push(members);
 
 import { DiscordMessage } from "./elements/message/elm.jsx";  
 import { fillViewer } from './elements/guilds/gen.jsx';
+import { MessageEditor } from './elements/message-writer/elm.jsx';
 
 const main = document.getElementById('main');
-main.style.display = 'flex';
-main.style.flexDirection = 'column-reverse';
-main.style.height = '100%';
-main.style.overflowX = 'hidden';
-main.style.overflowY = 'scroll';
-const root = <div></div>
-main.appendChild(root);
+main.style.display = 'grid';
+main.style.gridTemplateRows = 'minmax(auto, 1fr) auto';
+main.style.height = "100%";
+const wrapper = <div style="
+    display: flex; 
+    flex-direction: column-reverse; 
+    height: 100%; 
+    overflow-x: hidden; 
+    overflow-y: scroll;
+"></div>;
+main.appendChild(wrapper);
+main.appendChild(<MessageEditor></MessageEditor>);
+const root = <div></div>;
+wrapper.appendChild(root);
 client.on('READY', () => {
     fillViewer();
     enableBrowser();
 
     const messages = new Messages(client); client.stores.push(messages);
+    labelLoadingStage('Authorized by discord. Fetching channel messages.');
     messages.on('loaded', () => {
+        finishLoading();
         const msgId = messages.center;
         if (!msgId) return;
         const msg = document.getElementById(msgId);
