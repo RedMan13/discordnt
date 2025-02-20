@@ -476,7 +476,7 @@
         parse['Expires'] = new Date(Date.now() + (parse['Max-Age'] * 1000));
         parse['Path'] = location.pathname;
         parse['Domain'] = location.hostname;
-        writeCookies();
+        writeCookies(); 
         /** @type {HTMLDialogElement} */
         const dia = document.getElementById('login-prompt');
         /** @type {HTMLInputElement} */
