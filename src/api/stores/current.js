@@ -1,6 +1,7 @@
 import { PreloadedUserSettings } from '../setting-protos/user-settings.proto';
 import { Base64Binary } from '../../b64-binnary.js';
 import { IndexedMap } from '../indexed-map.js';
+import { GuildNotifications, ChannelNotifications } from '../type-enums.js';
 
 export class Current {
     constructor(client) {
@@ -115,5 +116,22 @@ export class Current {
             }
         }
         return folders.sort((a,b) => a.sort - b.sort);
+    }
+    async mentionsMe(message) {
+        const channel = this.client.askFor('Channels.get', message.channel_id);
+        const me = await this.client.askFor('getMember', channel.guild_id, this.user_id);
+        return message.mention_everyone || 
+            !!message.mentions.find(user => user.id === this.user_id) ||
+            !!message.mention_roles.find(role => me.includes(role));
+    }
+    async firesNotification(message) {
+        const channel = this.client.askFor('Channels.get', message.channel_id);
+        const guild = this.client.askFor('Guilds.get', channel.guild_id);
+        const notifAllow = (channel.message_notifications || (guild.message_notifications +1) || (guild.default_message_notifications +1)) || 1;
+        if (notifAllow === ChannelNotifications.NOTHING) return false;
+        const me = await this.client.askFor('getMember', guild.id, this.user_id);
+        return (message.mention_everyone && !guild.suppress_everyone) || 
+            !!message.mentions.find(user => user.id === this.user_id) ||
+            (!!message.mention_roles.find(role => me.includes(role)) && !guild.suppress_roles);
     }
 }

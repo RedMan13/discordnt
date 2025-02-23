@@ -193,6 +193,7 @@ export default class ApiInterface extends EventSource {
         }
     }
     async onevent(event, data) {
+        console.log(event, data);
         this.stores.forEach(store => {
             if (store.listens.includes(event))
                 store.notify(event, data);

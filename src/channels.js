@@ -1,5 +1,5 @@
-import { Asset } from "./asset-helper.js";
-import { ChannelType } from "./type-enums.js";
+import { Asset } from "./api/asset-helper.js";
+import { ChannelType } from "./api/type-enums.js";
 
 function getSort(guildId) {
     const index = client.settings.guildFolders.guildPositions.findIndex(id => id == guildId);

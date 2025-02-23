@@ -1,81 +1,47 @@
 const { 
-    MJSHelpers: { isMJS, resolveImport }, 
-    CJSHelpers: { toCJS, getCJSRequired }
+    MJSHelpers: { resolveImport }, 
+    CJSHelpers: { getDeepFiles }
 } = require('builder');
-const mime = require('mime');
 const path = require('path');
 
-const handled = {};
-async function getDeepFiles(file, manager, props) {
-    if (handled[file]) return;
-    handled[file] = true;
-    
-    let data = (await manager.getFile(file))[1];
-    let out = [[file, data]];
-    switch (props.type.toLowerCase()) {
-    case 'apng':
-    case 'avif':
-    case 'gif':
-    case 'jpeg':
-    case 'png':
-    case 'svg':
-    case 'webp':
-        data = `module.exports = defineElement(${JSON.stringify(path.parse(file).name.replace(/[^a-z]+/ig, '-'))}, {}, shad => {const img = new Image(); img.style.width = '100%'; img.style.height = '100%'; img.src = "data:${mime.lookup(props.type)};base64,${JSON.stringify(Buffer.from(data).toString('base64')).slice(1, -1)}"; shad.appendChild(img);});`;
-        break;
-    case 'html':
-        data = `module.exports = parseHTMLUnsafe(${JSON.stringify(data)});`;
-        break;
-    case 'xml':
-        data = `const parser = new DOMParser(); module.exports = parser.parseFromString(${JSON.stringify(data)}, "text/xml");`;
-        break;
-    case 'txt':
-        data = `module.exports = ${JSON.stringify(data)};`;
-        break;
-    case 'css':
-        data = `module.exports = new CSSStyleSheet(); module.exports.replaceSync(${JSON.stringify(data)});`;
-        break;
-    case 'json':
-        data = `module.exports = JSON.parse(${JSON.stringify(data)});`;
-        break;
-    default:
-    case 'js':
-    case 'mjs':
-    case 'cjs': {
-        let imports;
-        if (isMJS(data))
-            [imports, data] = toCJS(data);
-        else
-            imports = getCJSRequired(data);
-        for (const [imported, props] of imports) {
-            const real = (await resolveImport(path.dirname(file), imported, manager))[2];
-            props.type ||= path.extname(real).slice(1) || 'js';
-            const datas = await getDeepFiles(real, manager, props);
-            if (!datas) continue;
-            out = out.concat(datas);
-        }
-        break;
-    }
-    }
-    out[0][1] = data;
-    return out;
-}
-async function jsGen(locPath, util) {
-    const files = await getDeepFiles(locPath, util, { type: 'js' });
+async function jsGen(locPath, imp, util) {
+    const files = await getDeepFiles(locPath, util);
     if (!files) return util.skip = true;
     let jsGen = 'const webpackFiles = {';
     for (const [file, data] of files) {
-        jsGen += JSON.stringify('./' + path.relative(util.entry, file));
+        jsGen += JSON.stringify('./' + path.relative(util.buildDir, file));
         jsGen += '(module,exports,require) {';
-        jsGen += data;
+        jsGen += file.endsWith('js') ? data : `module.exports = new Int8Array(${JSON.stringify([...Buffer.from(data)])})`;
         jsGen += '},';
     }
     jsGen += '};';
     jsGen += `
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    function toBase64(array) {
+        let bitLen = 0;
+        let bitsBack;
+        let out = '';
+        for (const byte of array) {
+        const val = ((bitsBack | (byte >> bitLen)) & 0b11111100) >> 2;
+            out += chars[val];
+            bitLen = 8 - (6 - bitLen);
+            if (bitLen === 6) {
+                bitLen = 0;
+                out += chars[byte & 0b111111];
+            }
+            bitsBack = (byte & ((1 << bitLen) -1)) << (8 - bitLen);
+        }
+        return out;
+    }
     class ImportError extends Error {}
     const validExts = ['.js', '.mjs', '.cjs', '.json'];
     const ranFiles = {};
+    const binTexDecoder = new TextDecoder();
+    const domParser = new DOMParser();
     function genReq(root) {
-        return function require(file) {
+        return function(file, props) {
+            props ??= {}
+            props.type ||= file.split('.').at(-1);
             const old = file;
             let path = root.split('/');
             const instructs = file.split('/');
@@ -97,8 +63,11 @@ async function jsGen(locPath, util) {
             let triedNode = false;
             while (!(file in webpackFiles)) {
                 allTried.push(file);
-                if (path.at(-1) === 'index' && !validExts[triedExt] && triedNode)
-                    throw new ImportError(\`Could not locate a module at ./\${path.slice(2, -1).join('/')} from \${root}. tried \${JSON.stringify(allTried, null, 4)}\`);
+                if (path.at(-1) === 'index' && !validExts[triedExt] && triedNode) {
+                    path = path.slice(2, -1);
+                    file = path.join('/');
+                    break;
+                }
                 if (path.at(-1) === 'index' && !validExts[triedExt] && !triedNode) {
                     path = old.split('/');
                     path.unshift('.', 'node_modules');
@@ -109,33 +78,69 @@ async function jsGen(locPath, util) {
                 file = path.join('/');
                 file += validExts[triedExt++];
             }
+            if (!(file in webpackFiles) && !globalThis.require)
+                throw new ImportError(\`Could not locate a module at ./\${file} from \${root}. tried \${JSON.stringify(allTried, null, 4)}\`);
+            if (!(file in webpackFiles) && globalThis.require)
+                return require(old, props);
             if (file in ranFiles)
                 return ranFiles[file].exports;
             const module = { exports: {} };
             ranFiles[file] = module;
             webpackFiles[file](module, module.exports, genReq(file.split('/').slice(0, -1).join('/')));
+            if (!props.type.endsWith('js')) {
+                let mimeType;
+                switch (props.type) {
+                case 'json': mimeType ??= 'application/json';
+                    return module.exports = JSON.parse(binTexDecoder.decode(module.exports));
+                case 'css': mimeType ??= 'text/css';
+                    const style = new CSSStyleSheet();
+                    style.replaceSync(binTexDecoder.decode(module.exports));
+                    return module.exports = style;
+                case 'txt': mimeType ??= 'text/plain';
+                    return module.exports = binTexDecoder.decode(module.exports);
+                case 'html': mimeType ??= 'text/html';
+                case 'xml': mimeType ??= 'text/xml';
+                    return module.exports = domParser.parse(binTexDecoder.decode(module.exports));
+                case 'webp': mimeType ??= 'image/webp';
+                case 'svg': mimeType ??= 'image/svg+xml';
+                case 'png': mimeType ??= 'image/png';
+                case 'jpg':
+                case 'jpeg': mimeType ??= 'image/jpeg';
+                case 'gif': mimeType ??= 'image/gif';
+                case 'avif': mimeType ??= 'image/avif';
+                case 'apng': mimeType ??= 'image/apng';
+                    const link = \`data:\${mimeType};base64,\${toBase64(module.exports)}\`;
+                    const Element = defineElement(path.at(-1).split('.', 2)[0], {}, function(shadow) {
+                        const img = new Image();
+                        img.style.width = '100%';
+                        img.style.height = '100%';
+                        img.src = link;
+                        shadow.appendChild(img);
+                    });
+                    module.exports = Element;
+                    break;
+                case 'proto': break;
+                case 'jsx': break;
+                default:
+                    console.warn(\`Couldnt handle file type \${props.type} when importing file \${old}\`);
+                    break;
+                }
+            }
             return module.exports;
         }
     }
-    genReq('.')(${JSON.stringify(path.relative(util.entry, locPath))});
+    genReq('.')(${JSON.stringify(imp)});
     `;
     return jsGen;
 }
 module.exports = async function(util) {
-    if (util.path.endsWith('js')) {
-        if (!util.file.startsWith('#!')) return;
-        util.file = jsGen(util.path, util);
-        return;
-    }
     for (const m of util.file.matchAll(/<script.*?>/gi)) {
         const src = m[0].match(/src="(.*?)"/i);
         if (!src) continue;
-        const locPath = (await resolveImport(path.dirname(util.path), src[1], util))[2];
+        const [_, imp, locPath] = await resolveImport(path.dirname(util.path), src[1], util);
         const start = src.index + m.index;
         const end = start + src[0].length;
-        util.replace(start, end, `>${await jsGen(locPath, util)}</script`);
-        for (const key in handled)
-            delete handled[key];
+        util.replace(start, end, `>${await jsGen(locPath, imp, util)}</script`);
     }
 }
-module.exports.matchFile = util => util.matchType('html,php,js,mjs,cjs');
+module.exports.matchFile = util => util.matchType('html,php');
