@@ -206,8 +206,8 @@ module.exports = async function(util) {
     }, ['start', '*attributes', '?close', '^', 'end']);
     
     for (const usage of parseTokens(util.tokens, util)) {
-        const contMatch = util.file.slice(0, usage.start)
-            .match(/(?<variable>[_$a-z][_$a-z0-9.]*)\s*=\s*$/i);
+        const elStr = util.file.slice(0, usage.start);
+        const contMatch = elStr.match(/(?<variable>[_$a-z][_$a-z0-9.]*)\s*=\s*$/i);
         const container = contMatch?.groups?.variable;
         const start = contMatch?.index ?? usage.start;
         if (usage.tagname === 'define') {

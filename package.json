@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "build": "build",
+    "build": "build && pkg -C GZip ./dist/index.js",
     "dev": "develop",
     "start": "develop"
   },

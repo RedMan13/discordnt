@@ -97,7 +97,7 @@ export class Members extends LimitedStore {
     }
     async getMember(guild, userId) {
         const user = await this.client.askFor('getUser', userId);
-        if (!guild) return user;
+        if (!guild || guild === this.client.askFor('user_id')) return user;
         const member = await this.loadUser(guild, userId);
         if (!member) return user;
         const topRole = this.client.askFor('totalRole', member.roles);

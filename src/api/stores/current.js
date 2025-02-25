@@ -125,11 +125,22 @@ export class Current {
             !!message.mention_roles.find(role => me.includes(role));
     }
     async firesNotification(message) {
+        if (message.author.id === this.user_id) return false;
         const channel = this.client.askFor('Channels.get', message.channel_id);
         const guild = this.client.askFor('Guilds.get', channel.guild_id);
-        const notifAllow = (channel.message_notifications || (guild.message_notifications +1) || (guild.default_message_notifications +1)) || 1;
+        const notifAllow = channel.guild_id === this.user_id
+            ? ChannelNotifications.ALL_MESSAGES
+            : !guild
+                ? channel.message_notifications ?? ChannelNotifications.ALL_MESSAGES
+                : (channel.message_notifications || 
+                    (guild.message_notifications +1) || 
+                    (guild.default_message_notifications +1)) || 
+                    ChannelNotifications.ONLY_MENTIONS;
         if (notifAllow === ChannelNotifications.NOTHING) return false;
-        const me = await this.client.askFor('getMember', guild.id, this.user_id);
+        if (notifAllow === ChannelNotifications.ALL_MESSAGES) return true;
+        const me = !guild
+            ? this.user
+            : await this.client.askFor('getMember', guild.id, this.user_id);
         return (message.mention_everyone && !guild.suppress_everyone) || 
             !!message.mentions.find(user => user.id === this.user_id) ||
             (!!message.mention_roles.find(role => me.includes(role)) && !guild.suppress_roles);

@@ -1,43 +1,55 @@
 #!/usr/bin/env node
-const fs = require('fs');
-const path = require('path');
-const notifier = require('node-notifier');
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import notifier from 'node-notifier';
+import WebSocket from 'ws';
+global.WebSocket = WebSocket;
 const parse = fs.existsSync('./config.json') ? JSON.parse(fs.readFileSync('./config.json')) : {};
 parse.url ??= 'https://godslayerakp.serv00.net/discordnt.html';
-const { Asset } = require('./src/api/asset-helper');
-const ApiInterface = require('./src/api/index.js');
-const { Current } = require('./src/api/stores/current');
-const { Channels } = require('./src/api/stores/channels');
-const { Users } = require('./src/api/stores/users');
-const { Members } = require('./src/api/stores/members');
+parse.token ??= process.argv[2];
+fs.writeFileSync('./config.json', JSON.stringify(parse, null, 4))
+import { Asset } from './src/api/asset-helper';
+import ApiInterface from "./src/api/index.js";
+import { Users } from "./src/api/stores/users.js";
+import { Channels } from "./src/api/stores/channels.js";
+import { Guilds } from "./src/api/stores/guilds.js";
+import { Current } from "./src/api/stores/current.js";
+import { Members } from "./src/api/stores/members.js";
 const client = new ApiInterface(parse.token, 9);
 const current  = new Current(client);  client.stores.push(current);
+const guilds   = new Guilds(client);   client.stores.push(guilds);
 const channels = new Channels(client); client.stores.push(channels);
 const users    = new Users(client);    client.stores.push(users);
 const members  = new Members(client);  client.stores.push(members);
-fs.mkdir('./users');
+if (fs.existsSync('./users')) fs.rmSync('./users', { recursive: true, force: true });
+fs.mkdirSync('./users');
 
 process.on('exit', () => fs.rmSync('./users', { recursive: true, force: true }));
 users.on('set', async (id, old, user) => {
     const req = await fetch(Asset.UserAvatar(user, 'png', 64));
     const res = await req.arrayBuffer();
-    fs.writeFile(`./users/${id}.png`, res);
+    fs.writeFileSync(`./users/${id}.png`, Buffer.from(res));
 });
 users.on('remove', id => fs.rm(`./users/${id}.png`));
 client.on('MESSAGE_CREATE', async message => {
     if (!await current.firesNotification(message)) return;
+    console.log('Firing notification for message by', message.author.username);
     const channel = channels.get(message.channel_id);
     const user = await members.getMember(channel.guild_id, message.author.id);
     notifier.notify({
-        title: `${user.username} mentioned you in ${channel.name}`,
+        title: channel.guild_id === current.user_id 
+            ? `${user.username} sent you a message`
+            : `${user.username} mentioned you in ${channel.name}`,
         message: (message.message_reference?.type === 0 
             ? `( ${message.referenced_message.content} )\n` 
             : '') + 
             message.content,
-        icon: path.resolve(`./users/${id}.png`),
+        icon: path.resolve(`./users/${message.author.id}.png`),
         open: `${parse.url}#${message.channel_id}`,
         reply: true
     }, (err, res, meta) => {
+        if (err) throw err;
+        if (!meta) return;
         if (meta.activationType !== 'replied') return;
         client.fromApi(`POST /channels/${message.channel_id}/messages`, {
             content: res,

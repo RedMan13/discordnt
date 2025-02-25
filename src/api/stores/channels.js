@@ -26,8 +26,6 @@ export class Channels extends LimitedStore {
                 }
             }
             for (const channel of data.private_channels) {
-                if (channel.type === ChannelType.DM && !data.relationships.find(user => user.id === channel.id)) 
-                    continue; // ignore user channels that have no relations (those users arnt included anywhere else)
                 channel.guild_id = data.user.id;
                 this.set(channel.id, channel);
             }

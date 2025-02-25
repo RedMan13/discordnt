@@ -41,7 +41,7 @@ export class Guilds extends LimitedStore {
     get(id) {
         const guild = super.get(id);
         if (!guild) return guild;
-        const settings = { ...this.client.askFor(guild.id) };
+        const settings = { ...this.client.askFor('getGuildSettings', guild.id) };
         if (!settings) return guild;
         delete settings.guild_id;
         delete settings.channel_overrides;

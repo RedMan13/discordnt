@@ -5,6 +5,7 @@ import { EventSource } from './event-source.js';
 const ZLIB_SUFFIX = new Uint8Array([255, 255, 0, 0]);
 const gateway = 'wss://gateway.discord.gg';
 
+export const DebuggerEvents = ['READY', 'READY_SUPPLEMENTAL', 'GUILD_MEMBERS_CHUNK'];
 export default class ApiInterface extends EventSource {
     #token = null;
     constructor(token, version = 9) {
@@ -162,7 +163,7 @@ export default class ApiInterface extends EventSource {
                     "os": "Win32",
                     "browser": "Mozilla",
                     "device": "",
-                    "system_locale": navigator.language,
+                    "system_locale": 'en',
                     "browser_user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0",
                     "browser_version": "5.0",
                     "os_version": "21.0.0",
@@ -193,7 +194,7 @@ export default class ApiInterface extends EventSource {
         }
     }
     async onevent(event, data) {
-        console.log(event, data);
+        if (DebuggerEvents.includes(event) || DebuggerEvents.length === 0) console.log(event, data);
         this.stores.forEach(store => {
             if (store.listens.includes(event))
                 store.notify(event, data);
