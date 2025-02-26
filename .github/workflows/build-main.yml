@@ -20,7 +20,7 @@ jobs:
         run: |
           npm i
           npm run build
-      - name: Push built to Site
+      - name: Push main page to Site
         uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
           server: 's3.serv00.com'
@@ -28,3 +28,27 @@ jobs:
           password: '${{ secrets.SSH_PASSWORD }}'
           local_path: './dist/discordnt.html'
           remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_html'
+      - name: Push linux server to Site
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+        with:
+          server: 's3.serv00.com'
+          username: 'godslayerakp'
+          password: '${{ secrets.SSH_PASSWORD }}'
+          local_path: './dist/linux.zip'
+          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_html/discordnt-server/linux.zip'
+      - name: Push mac server to Site
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+        with:
+          server: 's3.serv00.com'
+          username: 'godslayerakp'
+          password: '${{ secrets.SSH_PASSWORD }}'
+          local_path: './dist/mac.zip'
+          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_html/discordnt-server/mac.zip'
+      - name: Push windows server to Site
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+        with:
+          server: 's3.serv00.com'
+          username: 'godslayerakp'
+          password: '${{ secrets.SSH_PASSWORD }}'
+          local_path: './dist/windows.zip'
+          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_html/discordnt-server/windows.zip'
