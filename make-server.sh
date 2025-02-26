@@ -13,10 +13,13 @@ cp ./README.md ./dist/mac/README
 cp ./README.md ./dist/windows/README
 cd ./dist/linux
 zip -r ./linux.zip .
+mv ./linux.zip ../linux.zip
 cd ../mac
 zip -r ./mac.zip .
+mv ./mac.zip ../mac.zip
 cd ../windows
 zip -r ./windows.zip .
+mv ./windows.zip ../windows.zip
 cd ../../
 rm -rf ./dist/linux
 rm -rf ./dist/mac
