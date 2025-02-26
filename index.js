@@ -38,20 +38,23 @@ users.on('remove', id => fs.rm(path.resolve(usersFolder, `${id}.png`)));
 client.on('open', () => {
     notifier.notify({
         title: 'DiscordNT Node Server',
-        message: 'Connecting to the discord gateway.'
+        message: 'Connecting to the discord gateway.',
+        icon: path.resolve('./default.png')
     });
 })
 client.on('invalid', () => {
     notifier.notify({
         title: 'DiscordNT Node Server',
-        message: 'Could not start up the server. Invalid authentication token'
+        message: 'Could not start up the server. Invalid authentication token',
+        icon: path.resolve('./default.png')
     });
     process.exit();
 });
 client.on('READY', () => {
     notifier.notify({
         title: 'DiscordNT Node Server',
-        message: 'Successfully connected to the discord gateway.'
+        message: 'Successfully connected to the discord gateway.',
+        icon: path.resolve('./default.png')
     });
 });
 client.on('MESSAGE_CREATE', async message => {
@@ -59,6 +62,7 @@ client.on('MESSAGE_CREATE', async message => {
     console.log('Firing notification for message by', message.author.username);
     const channel = channels.get(message.channel_id);
     const user = await members.getMember(channel.guild_id, message.author.id);
+    const pfp = path.resolve(usersFolder, `${message.author.id}.png`);
     notifier.notify({
         title: channel.guild_id === current.user_id 
             ? `${user.username} sent you a message`
@@ -67,7 +71,9 @@ client.on('MESSAGE_CREATE', async message => {
             ? `( ${message.referenced_message.content} )\n` 
             : '') + 
             message.content,
-        icon: path.resolve(usersFolder, `${message.author.id}.png`),
+        icon: fs.existsSync(pfp) 
+            ? pfp
+            : path.resolve('./default.png'),
         open: `${parse.url}#${message.channel_id}`,
         reply: true
     }, (err, res, meta) => {
