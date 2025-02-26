@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "build": "build && ./make-server.sh",
+    "build": "build --no-token-debug true && ./make-server.sh",
     "dev": "develop",
     "start": "develop"
   },
