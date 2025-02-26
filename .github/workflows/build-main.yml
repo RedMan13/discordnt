@@ -35,7 +35,7 @@ jobs:
           username: 'godslayerakp'
           password: '${{ secrets.SSH_PASSWORD }}'
           local_path: './dist/linux.zip'
-          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_html/discordnt-server/linux.zip'
+          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_html/discordnt-server'
       - name: Push mac server to Site
         uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
@@ -43,7 +43,7 @@ jobs:
           username: 'godslayerakp'
           password: '${{ secrets.SSH_PASSWORD }}'
           local_path: './dist/mac.zip'
-          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_html/discordnt-server/mac.zip'
+          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_html/discordnt-server'
       - name: Push windows server to Site
         uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
@@ -51,4 +51,4 @@ jobs:
           username: 'godslayerakp'
           password: '${{ secrets.SSH_PASSWORD }}'
           local_path: './dist/windows.zip'
-          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_html/discordnt-server/windows.zip'
+          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_html/discordnt-server'
