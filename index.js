@@ -67,10 +67,10 @@ client.on('MESSAGE_CREATE', async message => {
         title: channel.guild_id === current.user_id 
             ? `${user.username} sent you a message`
             : `${user.username} mentioned you in ${channel.name}`,
-        message: (message.message_reference?.type === 0 
-            ? `( ${message.referenced_message.content} )\n` 
-            : '') + 
-            message.content,
+        message: message.content + 
+            (message.message_reference?.type === 0 
+                ? `\n( in reply to "${message.referenced_message.content}" )` 
+                : ''),
         icon: fs.existsSync(pfp) 
             ? pfp
             : path.resolve('./default.png'),
