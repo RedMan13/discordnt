@@ -45,7 +45,7 @@ client.on('open', () => {
 client.on('invalid', () => {
     notifier.notify({
         title: 'DiscordNT Node Server',
-        message: 'Could not start up the server. Invalid authentication token',
+        message: 'Couldnt connect to the discord gateway. Closing server.',
         icon: path.resolve('./default.png')
     });
     process.exit();

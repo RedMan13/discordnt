@@ -19,7 +19,7 @@ jobs:
       - name: Install dependencies and build site
         run: |
           npm i
-          npx build
+          npm run build
       - name: Push built to Site
         uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:

@@ -6,3 +6,4 @@ config\.json
 index-linux
 index-macos
 index-win.exe
+make-server\.sh
