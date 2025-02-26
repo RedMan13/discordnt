@@ -4,11 +4,15 @@ import * as path from 'node:path';
 import notifier from 'node-notifier';
 import WebSocket from 'ws';
 global.WebSocket = WebSocket;
-const parse = fs.existsSync('./config.json') ? JSON.parse(fs.readFileSync('./config.json')) : {};
+const conf = path.resolve('./config.json');
+const usersFolder = path.resolve('./users');
+const parse = fs.existsSync(require.resolve(conf)) 
+    ? JSON.parse(fs.readFileSync(conf)) 
+    : {};
 parse.url ??= 'https://godslayerakp.serv00.net/discordnt.html';
 parse.token ??= process.argv[2];
-fs.writeFileSync('./config.json', JSON.stringify(parse, null, 4))
-import { Asset } from './src/api/asset-helper';
+fs.writeFileSync(conf, JSON.stringify(parse, null, 4))
+import { Asset } from './src/api/asset-helper.js';
 import ApiInterface from "./src/api/index.js";
 import { Users } from "./src/api/stores/users.js";
 import { Channels } from "./src/api/stores/channels.js";
@@ -21,16 +25,35 @@ const guilds   = new Guilds(client);   client.stores.push(guilds);
 const channels = new Channels(client); client.stores.push(channels);
 const users    = new Users(client);    client.stores.push(users);
 const members  = new Members(client);  client.stores.push(members);
-if (fs.existsSync('./users')) fs.rmSync('./users', { recursive: true, force: true });
-fs.mkdirSync('./users');
+if (fs.existsSync(usersFolder)) fs.rmSync(usersFolder, { recursive: true, force: true });
+fs.mkdirSync(usersFolder);
 
-process.on('exit', () => fs.rmSync('./users', { recursive: true, force: true }));
+process.on('exit', () => fs.rmSync(usersFolder, { recursive: true, force: true }));
 users.on('set', async (id, old, user) => {
     const req = await fetch(Asset.UserAvatar(user, 'png', 64));
     const res = await req.arrayBuffer();
-    fs.writeFileSync(`./users/${id}.png`, Buffer.from(res));
+    fs.writeFileSync(path.resolve(usersFolder, `${id}.png`), Buffer.from(res));
 });
-users.on('remove', id => fs.rm(`./users/${id}.png`));
+users.on('remove', id => fs.rm(path.resolve(usersFolder, `${id}.png`)));
+client.on('open', () => {
+    notifier.notify({
+        title: 'DiscordNT Node Server',
+        message: 'Connecting to the discord gateway.'
+    });
+})
+client.on('invalid', () => {
+    notifier.notify({
+        title: 'DiscordNT Node Server',
+        message: 'Could not start up the server. Invalid authentication token'
+    });
+    process.exit();
+});
+client.on('READY', () => {
+    notifier.notify({
+        title: 'DiscordNT Node Server',
+        message: 'Successfully connected to the discord gateway.'
+    });
+});
 client.on('MESSAGE_CREATE', async message => {
     if (!await current.firesNotification(message)) return;
     console.log('Firing notification for message by', message.author.username);
@@ -44,7 +67,7 @@ client.on('MESSAGE_CREATE', async message => {
             ? `( ${message.referenced_message.content} )\n` 
             : '') + 
             message.content,
-        icon: path.resolve(`./users/${message.author.id}.png`),
+        icon: path.resolve(usersFolder, `${message.author.id}.png`),
         open: `${parse.url}#${message.channel_id}`,
         reply: true
     }, (err, res, meta) => {
