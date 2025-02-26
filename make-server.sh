@@ -11,9 +11,13 @@ cp ./dist/default.png ./dist/windows/default.png
 cp ./README.md ./dist/linux/README
 cp ./README.md ./dist/mac/README
 cp ./README.md ./dist/windows/README
-zip -r ./dist/linux.zip ./dist/linux
-zip -r ./dist/mac.zip ./dist/mac
-zip -r ./dist/windows.zip ./dist/windows
+cd ./dist/linux
+zip -r ./linux.zip .
+cd ../mac
+zip -r ./mac.zip .
+cd ../windows
+zip -r ./windows.zip .
+cd ../../
 rm -rf ./dist/linux
 rm -rf ./dist/mac
 rm -rf ./dist/windows
