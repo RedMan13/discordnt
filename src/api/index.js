@@ -16,7 +16,7 @@ export default class ApiInterface extends EventSource {
         this.#token = token;
         this.version = version;
         this.stores = [];
-
+ 
         this.msgBuf = new Uint8Array();
         this.infContext = new Inflate({
             to: 'string',
