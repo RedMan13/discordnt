@@ -101,6 +101,12 @@ export class Messages extends LimitedStore {
         }
         }
     }
+    async getMessage(channel, id) {
+        return await this.client.fromApi(`GET /channels/${channel}/messages`, {
+            around: id,
+            limit: 1
+        });
+    }
     async fill(len) {
         if (!this.channel) return;
 

@@ -1,3 +1,5 @@
+import { format, writerSyntax } from "./render-md";
+
 export const MessageEditor = <define
     this={{
         async send() {
@@ -5,7 +7,7 @@ export const MessageEditor = <define
             const editor = this.display.getElementById('editor');
             const here = client.askFor('Messages.channel');
             await client.fromApi(`POST /channels/${here}/messages`, {
-                content: editor.value
+                content: editor.textContent
             });
             editor.value = '';
         }
@@ -35,7 +37,18 @@ export const MessageEditor = <define
             " 
             autofocus 
             contenteditable
-            on:keypress={e => {
+            on:keyup={async e => {
+                /** @type {HTMLDivElement} */
+                const editor = this.display.getElementById('editor');
+                const selection = window.getSelection();
+                const range = selection.getRangeAt(0);
+                const old = range.endOffset;
+                const entered = editor.textContent;
+                editor.innerHTML = '';
+                const formated = await format(entered, false, writerSyntax);
+                appendChildren(editor, formated);
+                console.log(old);
+                range.setStart(editor, old);
                 if (e.shiftKey) return;
                 if (e.key !== 'Enter') return;
                 this.send();

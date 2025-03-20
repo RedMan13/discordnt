@@ -176,6 +176,17 @@ export function checkType(object, compare, silence, keypath = '', checked) {
     return good;
 }
 
+export const HasTypes = new Enum({
+    'link': 'link',
+    'embed': 'embed',
+    'poll': 'poll',
+    'file': 'file',
+    'video': 'video',
+    'image': 'image',
+    'sound': 'sound',
+    'sticker': 'sticker',
+    'forward': 'snapshot'
+});
 export const ChannelType = new Enum({
     GUILD_TEXT:          0,  // a text channel within a server
     DM:                  1,  // a direct message between users

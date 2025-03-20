@@ -1,19 +1,56 @@
 import { Inflate } from 'pako';
 import { GatewayOpcode } from './type-enums.js';
 import { EventSource } from './event-source.js';
+const localStorage = globalThis.window?.localStorage ?? {};
+if (globalThis.window?.localStorage) delete window.localStorage;
 // note: this is reversed to how it should actually be shaped
 const ZLIB_SUFFIX = new Uint8Array([255, 255, 0, 0]);
 const gateway = 'wss://gateway.discord.gg';
+function stringifyError(packet, errors, indent = '') {
+    if (errors.message) {
+        if (!errors.errors) return `${errors.message} (${errors.code})`;
+        let out = '';
+        out += `// ${errors.message} (${errors.code})\n`;
+        out += stringifyError(packet, errors.errors).join('\n');
+        return out;
+    }
+    const lines = [];
+    lines.push(Array.isArray(packet) ? '[' : '{');
+    for (const key in packet) {
+        const member = errors[key];
+        if (member._errors)
+            for (const { message, code } of member._errors) 
+                lines.push(`    // ${message} (${code})`);
+        switch (typeof packet[key]) {
+        case 'object':
+            if (packet[key] === null) { lines.push(`"${key}": null,`); break; }
+            const child = stringifyError(packet[key], errors[key], indent + '    ');
+            child[child.length -1] += ',';
+            lines.push(...child);
+            break;
+        default:
+        case 'boolean': 
+        case 'bigint':
+        case 'number':
+        case 'string':
+        case 'undefined':
+            lines.push(`    ${JSON.stringify(key)}: ${JSON.stringify(packet[key])}`); break;
+        }
+    }
+    lines[lines.length -1] = lines[lines.length -1].slice(0, -1);
+    lines.push(Array.isArray(packet) ? ']' : '}');
+    return lines.map((line, idx) => idx === 0 ? line : indent + line);
+}
 
-export const DebuggerEvents = ['READY', 'READY_SUPPLEMENTAL', 'GUILD_MEMBERS_CHUNK'];
+export const DebuggerEvents = [''];
 export default class ApiInterface extends EventSource {
     #token = null;
     constructor(token, version = 9) {
         super();
-        this.mustAuthImediat = false;
+        this.mustAuthImmediate = false;
         this.reconUrl = gateway;
         this.sessionId = null;
-        this.#token = token;
+        this.#token = token ?? localStorage.token;
         this.version = version;
         this.stores = [];
  
@@ -43,12 +80,24 @@ export default class ApiInterface extends EventSource {
         this.websocket.onclose = this.onclose.bind(this);
 
         this.apiReqs = {};
+        this.limitedApis = {};
+        this.globalLimit = NaN;
+        
     }
-    set token(token) { this.#token = token; this.reconnect(true, 'New Token'); }
+    get token() { return !!this.#token }
+    set token(token) {
+        this.#token = token;
+        localStorage.token = token;
+        this.reconnect(true, 'New Token');
+    }
 
     fromApi(callPath, body) {
         if (this.apiReqs[callPath]) return this.apiReqs[callPath];
         const [method, path] = callPath.split(' ', 2);
+        if (Date.now() < this.limitedApis[path]) return;
+        if (Date.now() < this.globalLimit) return;
+        delete this.limitedApis[path];
+        this.globalLimit = NaN;
         const url = new URL(`https://discord.com/api/v${this.version}${path}`);
         console.log(method, 'at', url.toString());
         const opts = {
@@ -60,6 +109,7 @@ export default class ApiInterface extends EventSource {
         }
         if (method === 'GET' && body) {
             for (const [key, value] of Object.entries(body)) {
+                if (!value) continue;
                 url.searchParams.set(key, value);
             }
         } else {
@@ -67,14 +117,22 @@ export default class ApiInterface extends EventSource {
         }
 
         const promise = fetch(url, opts)
-            .then(req => req.json())
-            .then(res => {
+            .then(async req => [await req.json(), req.status === 429])
+            .then(([res, isRatelimit]) => {
                 delete this.apiReqs[url];
-                if ('code' in res) return Promise.reject(res);
+                if (res.code === 40062 || isRatelimit) {
+                    const stamp = Date.now() + (res.retry_after * 1000);
+                    if (res.global) this.globalLimit = stamp;
+                    else this.limitedApis[path] = stamp;
+                }
+                if ('code' in res) {
+                    console.log('Discord API response error:', stringifyError(body, res));
+                    return Promise.reject(res);
+                }
                 return res;
             })
             .catch(message => Promise.reject({ message }));
-        this.apiReqs[url] = promise
+        this.apiReqs[url] = promise;
         return promise;
     }
     askFor(key, ...args) {
@@ -94,16 +152,17 @@ export default class ApiInterface extends EventSource {
 
     reconnect(useGateway, message) {
         console.warn('reconnecting because', message);
-        this.mustAuthImediat = !useGateway;
+        this.mustAuthImmediate = !useGateway;
         const reconUrl = useGateway
             ? gateway
             : this.reconUrl;
         this.websocket.close();
+        delete this.websocket;
         const url = new URL(reconUrl);
         url.searchParams.set('v', this.version);
         url.searchParams.set('encoding', 'json');
         url.searchParams.set('compress', 'zlib-stream');
-        this.websocket = new WebSocket(reconUrl);
+        this.websocket = new WebSocket(url);
         this.websocket.binaryType = "arraybuffer";
         this.websocket.onopen = this.onopen.bind(this);
         this.websocket.onmessage = this.onmessage.bind(this);
@@ -113,10 +172,10 @@ export default class ApiInterface extends EventSource {
     }
     onopen() {
         this.emit('open');
-        if (this.mustAuthImediat) {
+        if (this.mustAuthImmediate) {
             // always unset because this is for an explicit task that can not be reiterated elsewhen
-            this.mustAuthImediat = false;
-            this.send(6, {
+            this.mustAuthImmediate = false;
+            this.send(GatewayOpcode.Resume, {
                 token: this.#token,
                 session_id: this.sessionId,
                 seq: this.seq

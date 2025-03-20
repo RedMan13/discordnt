@@ -5,7 +5,7 @@ import { UserAvatar } from '../profile.jsx';
 import { Username } from '../username.jsx';
 import { toUrl, Names } from '../../emojis.js';
 
-export const syntax = [
+export const mainSyntax = [
     [/^(#{1,3})\s+(.+?)$/mi, [false, true], (level, content) => {
         switch (level) {
         default:
@@ -100,9 +100,70 @@ export const syntax = [
     [/^<t:([0-9]+):([tTdDfFR])?>/i, [false, false], (time, style) => <TimeStamp t={time} s={style}></TimeStamp>],
     [/^<?(https?:\/\/[^\s]*)>?/i, [false], url => <a href={`/redirect?target=${url}`}>{url}</a>],
     [/^\n/i, () => <br/>],
+];
+export const writerSyntax = [
+    [/^(#{1,3})\s+(.+?)$/mi, [false, true], (level, content) => {
+        switch (level) {
+        default:
+        case '#':
+            return <h1># {content}</h1>
+        case '##':
+            return <h2>## {content}</h2>
+        case '###':
+            return <h3>### {content}</h3>
+        }
+    }],
+    [/^-#\s+(.+?)$/mi, [true], content => <h6>-# {content}</h6>],
+    [/^\*\*\*(.+?)\*\*\*/i, [true], content => <strong><em>***{content}***</em></strong>],
+    [/^\*\*(.+?)\*\*/i, [true], content => <strong>**{content}**</strong>],
+    [/^\*(.+?)\*/i, [true], content => <em>*{content}*</em>],
+    [/^```(?:([a-z]+)\n)?(.+?)```/is, [false, false], (lang, code) => <div>```{lang}<div class="external-code">{highlighter(lang, code)}</div>```</div>],
+    [/^``?(.+?)``?/i, [true], content => <code>`{content}`</code>],
+    [/^~~(.+?)~~/i, [true], content => <s>~~{content}~~</s>],
+    [/^__(.+?)__/i, [true], content => <u>__{content}__</u>],
+    [/^\|\|(.+?)\|\|/i, [true], content => <div style="background-color: #0004">||{content}||</div>],
+    [/^<@!?([0-9]+)>/i, [false], async id => <span class="mention">
+        <UserAvatar style="height: 1lh; width: 1lh; display: inline-block; vertical-align: bottom;" user={id}/>
+        <Username user={id}/>
+    </span>],
+    [/^<@&([0-9]+)>/i, [false], async id => {
+        const role = client.askFor('Roles.get', id);
+        const color = `#${role.color.toString(16).padStart(6, '0')}`;
+        return role
+            ? <span class="mention" style={`
+                color: ${color}; 
+                background-color: ${color}4D;
+            `}><em>@</em> {role.name}</span>
+            : <span class="mention"><em>@</em> Invalid Role</span>;
+    }],
+    [/^<#([0-9]+)>/i, [false], async id => {
+        const channel = client.askFor('Channels.get', id);
+        return channel 
+            ? <span class="mention"><em>#</em> {channel.name}</span>
+            : <span class="mention"><em>#</em> Invalid Channel</span>;
+    }],
+    [/^<id:([a-z]+)>/i, [false], content => <span class="mention"><em>#</em> {content}</span>],
+    [/^<(a?):([a-z_0-9]+):([0-9]+)>/i, [false, false, false], async (animated, name, id) => {
+        const image = Asset.CustomEmoji({ id }, animated ? 'gif' : 'png', 48);
+        return <img title={name} class="emoji" src={image}/>;
+    }],
+    [/^:([a-z_0-9]+):/i, [false], name => Names[name] ? <img
+        class="emoji"
+        title={name}
+        src={toUrl(Names[name])}
+    /> : name],
+    [/^(\p{Emoji})/i, [false], emoji => <img
+        class="emoji"
+        title={Names[emoji]}
+        src={toUrl(emoji)}
+    />],
+    [/^\[(.+?)\]\(<?(https?:\/\/[^\s]*)>?\)/i, [true, false], (title, url) => <a href={`/redirect?target=${url}`}>{title}</a>],
+    [/^<t:([0-9]+):([tTdDfFR])?>/i, [false, false], (time, style) => <TimeStamp t={time} s={style}></TimeStamp>],
+    [/^<?(https?:\/\/[^\s]*)>?/i, [false], url => <a href={`/redirect?target=${url}`}>{url}</a>],
+    [/^\n/i, () => <br/>],
 ]
 /** @param {string} text */
-export async function format(text, wrap = true) {
+export async function format(text, wrap = true, syntax = mainSyntax) {
     const out = [''];
     for (let i = 0; i < text.length; i++) {
         const test = text.slice(i);

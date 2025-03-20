@@ -26,6 +26,7 @@ export class Channels extends LimitedStore {
                 }
             }
             for (const channel of data.private_channels) {
+                if (!data.users.find(user => user.id === channel.id)) continue;
                 channel.guild_id = data.user.id;
                 this.set(channel.id, channel);
             }

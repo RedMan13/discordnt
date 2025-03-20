@@ -17,21 +17,16 @@ async function jsGen(locPath, imp, util) {
     jsGen += '};';
     jsGen += `
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-    function toBase64(array) {
-        let bitLen = 0;
-        let bitsBack;
+    function toBase64(bytes) {
         let out = '';
-        for (const byte of array) {
-        const val = ((bitsBack | (byte >> bitLen)) & 0b11111100) >> 2;
-            out += chars[val];
-            bitLen = 8 - (6 - bitLen);
-            if (bitLen === 6) {
-                bitLen = 0;
-                out += chars[byte & 0b111111];
-            }
-            bitsBack = (byte & ((1 << bitLen) -1)) << (8 - bitLen);
+        for (let i = 0; i < bytes.length; i += 3) {
+            const num = ((bytes[i] << 16) & 0xFF0000) + ((bytes[i + 1] << 8) & 0x00FF00) + (bytes[i + 2] & 0x0000FF);
+            out += chars[(num >> 18) & 0x3F] +
+                chars[(num >> 12) & 0x3F] +
+                chars[(num >> 6) & 0x3F] +
+                chars[num & 0x3F];
         }
-        return out;
+        return out.replace(/A+$/, m => '='.repeat(m.length));
     }
     class ImportError extends Error {}
     const validExts = ['.js', '.mjs', '.cjs', '.json'];
@@ -57,6 +52,7 @@ async function jsGen(locPath, imp, util) {
                 default: path.push(inst); break;
                 }
             }
+            if (path[0][0] !== '.') path.unshift('.');
             const allTried = [];
             file = path.join('/');
             let triedExt = 0;

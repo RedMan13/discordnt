@@ -52,3 +52,11 @@ jobs:
           password: '${{ secrets.SSH_PASSWORD }}'
           local_path: './dist/windows.zip'
           remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_html/discordnt-server'
+      - name: Push server version to Site
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+        with:
+          server: 's3.serv00.com'
+          username: 'godslayerakp'
+          password: '${{ secrets.SSH_PASSWORD }}'
+          local_path: './dist/appver.txt'
+          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_html/discordnt-server'

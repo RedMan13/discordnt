@@ -40,7 +40,7 @@ export class Roles extends IndexedMap {
         /** @type {Long} */
         const perms = sorted
             .map(({ permissions }) => Long.fromString(permissions, true, 10))
-            .reduce((c,v) => v.or(c), 0);
+            .reduce((c,v) => v.or(c), new Long(0));
         /** @type {number} */
         const colorRole = sorted.findLast(role => role.color);
         const iconRole = sorted.findLast(role => role.icon || role.unicode_emoji)

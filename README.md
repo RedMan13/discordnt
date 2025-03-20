@@ -1,6 +1,12 @@
 # DiscordNT Server
-As of now, there basically nothing. this app is inteaded to run as a console app although it has no issues being ran graphically.
+As of now, there is basically nothing. this app is inteaded to run as a console app although it has no issues being ran graphically.
 
+## Features
+- [x] Message push notifications
+- [ ] Activities LAN Service
+- [x] Xaero's minimap waypoint auto-import
+
+## Seting up and Running
 > The directory that you run this app in MUST be the same as the directory you want `config.json`, `default.png`, and the `/users` folder to go into.
 
 > This app currently stores your token in **__plane text__** with completely open access. use at your own risk!!!
@@ -25,4 +31,4 @@ To initialize the server you need to
 - after this you should eventually see the notification `Successfully connected to the discord gateway.` which means that the server has started successfully and you can omit the token on any further executions.
 - if you instead see `Couldnt connect to the discord gateway. Closing server.`, then either discord wont let the server connect or the provided token is invalid. try the steps over again just to be sure, and after that please open an issue at https://github.com/RedMan13/discordnt/issues.
 
-Currently, auto-startup isnt supported at all. this will *hopefully* be implemented soon however.
+Currently, setting up auto-startup isnt here at all. instead you need to manually setup a secondary script to set the current working directory to the correct folder.

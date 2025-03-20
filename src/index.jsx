@@ -9,7 +9,7 @@ import { Roles } from "./api/stores/roles.js";
 import { Members } from "./api/stores/members.js";
 import { GatewayOpcode } from './api/type-enums.js';
 labelLoadingStage('Connecting client to server.');
-window.client = new ApiInterface(parse['Token'], 9);
+window.client = new ApiInterface(null, 9);
 client.on('open', () => labelLoadingStage('Connected to discords gateway'));
 client.on('packet', ({ opcode }) => {
     switch (opcode) {
@@ -28,7 +28,7 @@ const members  = new Members(client);  client.stores.push(members);
 
 import { DiscordMessage } from "./elements/message/elm.jsx";  
 import { fillViewer } from './elements/guilds/gen.jsx';
-import { MessageEditor } from './elements/message-writer/elm.jsx';
+import { MessageEditor } from './elements/message/writer.jsx';
 
 const main = document.getElementById('main');
 main.style.display = 'grid';

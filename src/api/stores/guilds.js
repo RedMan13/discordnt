@@ -58,4 +58,21 @@ export class Guilds extends LimitedStore {
             members: channels,
         }
     }
+    async searchForIn(guild, props) {
+        if (props.during) {
+            const date = BigInt(new Date(new Date(props.during).toDateString()));
+            props.before = date + (24n * 60n * 60n * 1000n);
+            props.after = date;
+        }
+        return this.client.fromApi(`GET /guilds/${guild}/messages/search`, {
+            author_id: props.author?.id ?? props.author?.user_id ?? props.author_id ?? props.author,
+            mentions: props.mentions?.id ?? props.mentions?.user_id ?? props.mentions_id ?? props.mentions,
+            channel_id: props.channel?.id ?? props.channel_id ?? props.channel,
+            pinned: props.pinned,
+            has: props.has,
+            content: props.content,
+            max_id: ((BigInt(props.before) - 1420070400000n) << 22n) || props.before,
+            min_id: ((BigInt(props.after) - 1420070400000n) << 22n) || props.after
+        });
+    }
 }

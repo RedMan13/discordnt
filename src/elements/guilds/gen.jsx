@@ -36,7 +36,7 @@ export function fillGuilds() {
             continue;
         }
         const guilds = folder.servers.map(guild => <div 
-                id={userDms}
+                id={guild.id}
                 style={`
                     width: 2rem; 
                     height: 2rem; 
