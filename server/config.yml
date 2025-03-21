@@ -1,0 +1,81 @@
+# the last time stamp (in miliseconds) that appver.txt was checked
+last-update-fetched: 0
+# your discord account token, this line is why this whole app ay be a safety violation
+token: ''
+# fire push notifications as discord usually would
+notifications:
+  # if push notifications should be sent or not
+  enabled: yes
+  # the url to redirect to when the notification is clicked
+  # supported keys are {guild_id} {channel_id} and {message_id}
+  redirect-url: https://godslayerakp.serv00.net/discordnt.html#{channel_id}
+# settings for discord game integration, such as activities and in-game notifications
+rpc:
+  # if discord RPC should be enabled or not
+  enabled: yes
+  # what any given RPC app is allowed to do or recieve
+  # anything that has when in the name is something we send to the client and so isnt handled by error-requests
+  permissions:
+    # read-guilds: no
+    # when-guild-joined: no
+    # when-guild-updates: no
+    # read-channels: no
+    # when-channel-created: no
+    # join-voice-channels: no
+    # when-voice-joined: no
+    # when-others-join-voice: no
+    # when-others-change-voice-settings: no
+    # when-others-leave-voice: no
+    # when-voice-speaks: no
+    # when-voice-stops-speaking: no
+    # read-voice-channels: no
+    # read-voice-settings: no
+    # write-voice-settings: no
+    # when-voice-settings-changed: no
+    # when-voice-connection-changed: no
+    # change-others-voice-settings: no
+    # add-hardware-metadata: no
+    # write-activity-state: no
+    # add-activity-invites: no
+    # remove-activity-invites: no
+    # when-messages-created: no
+    # when-messages-edited: no
+    # when-messages-deleted: no
+    # when-notification-fired: no
+    # when-activity-join-pressed: no
+    # when-activity-spectate-pressed: no
+    # when-activity-join-request-pressed: no
+  # if we recieve a request for one of these, should it silently ignore or respond with an error
+  error-requests:
+    # - read-guilds
+    # - read-channels
+    # - join-voice-channels
+    # - read-voice-channels
+    # - read-voice-settings
+    # - write-voice-settings
+    # - change-others-voice-settings
+    # - add-hardware-metadata
+    # - write-activity-state
+    # - add-activity-invites
+    # - remove-activity-invites
+  # what app ids should be blacklisted, add item "all" to not allow any apps that arnt whitelisted
+  blacklisted-application-ids:
+  # what app ids should be whitelisted
+  whitelisted-application-ids:
+# configuration for automatic xaeros waypoints import from discord
+waypoints:
+  # if this server should import waypoints
+  enabled: no
+  # absolute path to the waypoints folder you wish to save to
+  directory: .minecraft/xaeros/New World
+  # the filename used by zaeros to indicate what server world the waypoints are for
+  world-id: waypoints
+  # optional: a fragment of the waypoints message content thats used to look it up via discords message search
+  # message-content-fragment: 'Some Title'
+  # the id of the guild to search inside, required by message-content-fragment
+  # guild-id: '123'
+  # optional: the id of the message that contains waypoints to import, use instead of or with message-content-fragment
+  message-id: '456'
+  # the id of the channel to look in, required by message-id
+  channel-id: '789'
+  

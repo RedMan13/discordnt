@@ -6,15 +6,18 @@
   },
   "main": "./dist/index.js",
   "dependencies": {
+    "erlpack": "^0.1.4",
     "long": "^5.2.3",
     "pako": "^1.0.11",
-    "protobufjs": "^7.4.0"
+    "express": "^4.21.2",
+    "websocket-express": "^3.1.2",
+    "protobufjs": "^7.4.0",
+    "yaml": "^2.7.0"
   },
   "devDependencies": {
     "@yao-pkg/pkg": "^6.3.1",
     "builder": "github:RedMan13/builder#main",
     "cors": "^2.8.5",
-    "express": "^4.19.2",
     "marked": "^13.0.0",
     "marked-footnote": "^1.2.2",
     "marked-gfm-heading-id": "^4.0.1",
@@ -22,7 +25,6 @@
     "marked-sequential-hooks": "^1.2.2",
     "node-notifier": "^10.0.1",
     "protobufjs-cli": "^1.1.3",
-    "ssh2-sftp-client": "^11.0.0",
-    "websocket-express": "^3.1.2"
+    "ssh2-sftp-client": "^11.0.0"
   }
 }

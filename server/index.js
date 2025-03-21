@@ -3,32 +3,24 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';  
 import notifier from 'node-notifier';  
 import WebSocket from 'ws';  
-import { Asset } from './src/api/asset-helper.js';  
-import ApiInterface from "./src/api/index.js";  
-import { Users } from "./src/api/stores/users.js";  
-import { Channels } from "./src/api/stores/channels.js";  
-import { Guilds } from "./src/api/stores/guilds.js";  
-import { Current } from "./src/api/stores/current.js";  
-import { Members } from "./src/api/stores/members.js";  
+import { Asset } from '../src/api/asset-helper.js';  
+import ApiInterface from "../src/api/index.js";  
+import { Users } from "../src/api/stores/users.js";  
+import { Channels } from "../src/api/stores/channels.js";  
+import { Guilds } from "../src/api/stores/guilds.js";  
+import { Current } from "../src/api/stores/current.js";  
+import { Members } from "../src/api/stores/members.js";  
+import { WebSocketExpress } from 'websocket-express';
+import YAML from 'yaml';
 global.WebSocket = WebSocket;
-const conf = path.resolve('./config.json');
+const conf = path.resolve('./config.yml');
 const usersFolder = path.resolve('./users');
-const parse = fs.existsSync(conf) 
-    ? JSON.parse(fs.readFileSync(conf)) 
-    : {};
-parse.lastUpdateFetch ??= 0;
-parse.url ??= 'https://godslayerakp.serv00.net/discordnt.html';
-parse.token ??= process.argv[2];
-parse.notifications ??= true;
-parse.waypoint ??= {};
-parse.waypoint.enabled ??= false;
-parse.waypoint.directory ??= '/path/to/xaeros/waypoint/store';
-parse.waypoint.worldId ??= 'waypoints';
-parse.waypoint.title ??= '[INSTEAD OF messageId]Title of message to search for';
-parse.waypoint.guildId ??= '[OPTIONAL FOR messageId] Id of the server that contains the message';
-parse.waypoint.channelId ??= '[OPTIONAL FOR title] Id of the channel that hosts these messages';
-parse.waypoint.messageId ??= '[INSTEAD OF title] Id of the message that contains waypoints';
-fs.writeFileSync(conf, JSON.stringify(parse, null, 4));
+function loadConfig(defaults) {
+    const parse = fs.existsSync(conf) 
+        ? YAML.parse(fs.readFileSync(conf)) 
+        : defaults;
+    ;
+}
 
 if (Date.now() - parse.lastUpdateFetch > (7 * 24 * 60 * 60 * 1000))
     fetch('https://godslayerakp.serv00.net/discordnt-server/appver.txt')
@@ -254,7 +246,10 @@ if (parse.notifications) {
             icon: fs.existsSync(pfp) 
                 ? pfp
                 : path.resolve('./default.png'),
-            open: `${parse.url}#${message.channel_id}`,
+            open: parse.url
+                .replaceAll('guild_id', channel?.guild_id ?? '@me')
+                .replaceAll('channel_id', message.channel_id)
+                .replaceAll('message_id', message.id),
             reply: true
         }, (err, res, meta) => {
             if (err) throw err;
