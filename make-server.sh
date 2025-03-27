@@ -1,13 +1,16 @@
-pkg -C GZip ./dist/index.js
+pkg -C GZip ./dist/server/index.js
 mkdir ./dist/linux
 mkdir ./dist/mac
 mkdir ./dist/windows
 mv ./index-linux ./dist/linux/server
 mv ./index-macos ./dist/mac/server
 mv ./index-win.exe ./dist/windows/server.exe
-cp ./dist/default.png ./dist/linux/default.png
-cp ./dist/default.png ./dist/mac/default.png
-cp ./dist/default.png ./dist/windows/default.png
+cp ./dist/server/default.png ./dist/linux/default.png
+cp ./dist/server/default.png ./dist/mac/default.png
+cp ./dist/server/default.png ./dist/windows/default.png
+cp ./dist/server/default-config.yml ./dist/linux/config.yml
+cp ./dist/server/default-config.yml ./dist/mac/config.yml
+cp ./dist/server/default-config.yml ./dist/windows/config.yml
 cp ./README.md ./dist/linux/README
 cp ./README.md ./dist/mac/README
 cp ./README.md ./dist/windows/README
@@ -24,5 +27,3 @@ cd ../../
 rm -rf ./dist/linux
 rm -rf ./dist/mac
 rm -rf ./dist/windows
-rm -f ./dist/default.png
-rm -f ./dist/README.md

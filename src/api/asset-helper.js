@@ -3,8 +3,9 @@ function findBitEdge(num) {
         if ((num >> i) & 0b1) return 1 << i;
     }
 }
+export const CDNHost = 'cdn.discordapp.com';
 const map = (url, types) => {
-    let funcStr = 'return `https://cdn.discordapp.com/';
+    let funcStr = `return \`https://${CDNHost}/`;
     let lastIdx = 0;
     for (const m of url.matchAll(/\{[$_a-z][$_0-9a-z]*(\.(?<objVarPath>[$_a-z][$_0-9a-z\.]*?))?\}/gi)) {
         funcStr += url.slice(lastIdx, m.index);

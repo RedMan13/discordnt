@@ -187,6 +187,32 @@ export const HasTypes = new Enum({
     'sticker': 'sticker',
     'forward': 'snapshot'
 });
+export const RPCErrorCodes = new Enum({
+    UnknownError:                    1000, // An unknown error occurred.
+    InvalidPayload:                  4000, // You sent an invalid payload.
+    InvalidCommand:                  4002, // Invalid command name specified.
+    InvalidGuild:                    4003, // Invalid guild ID specified.
+    InvalidEvent:                    4004, // Invalid event name specified.
+    InvalidChannel:                  4005, // Invalid channel ID specified.
+    InvalidPermissions:              4006, // You lack permissions to access the given resource.
+    InvalidClientID:                 4007, // An invalid OAuth2 application ID was used to authorize or authenticate with.
+    InvalidOrigin:                   4008, // An invalid OAuth2 application origin was used to authorize or authenticate with.
+    InvalidToken:                    4009, // An invalid OAuth2 token was used to authorize or authenticate with.
+    InvalidUser:                     4010, // The specified user ID was invalid.
+    OAuth2Error:                     5000, // A standard OAuth2 error occurred; check the data object for the OAuth2 error details.
+    SelectChannelTimedOut:           5001, // An asynchronous SELECT_TEXT_CHANNEL/SELECT_VOICE_CHANNEL command timed out.
+    GetGuildTimedOut:                5002, // An asynchronous GET_GUILD command timed out.
+    SelectVoiceForceRequired:        5003, // You tried to join a user to a voice channel but the user was already in one.
+    CaptureShortcutAlreadyListening: 5004, // You tried to capture more than one shortcut key at once.
+});
+export const RPCCloseCodes = new Enum({
+    InvalidClientID: 4000, // You connected to the RPC server with an invalid client ID.
+    InvalidOrigin:   4001, // You connected to the RPC server with an invalid origin.
+    RateLimited:     4002, // You are being rate limited.
+    TokenRevoked:    4003, // The OAuth2 token associated with a connection was revoked, get a new one!
+    InvalidVersion:  4004, // The RPC Server version specified in the connection string was not valid.
+    InvalidEncoding: 4005, // The encoding specified in the connection string was not valid.
+});
 export const ChannelType = new Enum({
     GUILD_TEXT:          0,  // a text channel within a server
     DM:                  1,  // a direct message between users
