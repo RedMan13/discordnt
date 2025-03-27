@@ -4,7 +4,7 @@ const pbjs = require('protobufjs-cli/pbjs');
 
 let tmpNum = 0;
 module.exports = async function(util) {
-    const tmpFile = path.resolve(path.dirname(util.path), 'tmp' + (++tmpNum));
+    const tmpFile = path.resolve(path.dirname(util.path), `tmp${++tmpNum}.protobuf.js`);
     await fs.writeFile(tmpFile, util.file);
     pbjs.main(['-t', 'static-module', '-w', 'commonjs', tmpFile], (err, out) => {
         if (err) throw err;
