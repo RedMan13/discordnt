@@ -1,7 +1,7 @@
 import { PreloadedUserSettings } from '../setting-protos/user-settings.proto';
 import { Base64Binary } from '../../b64-binnary.js';
 import { IndexedMap } from '../indexed-map.js';
-import { GuildNotifications, ChannelNotifications } from '../type-enums.js';
+import { ChannelNotifications } from '../type-enums.js';
 
 export class Current {
     constructor(client) {
@@ -71,8 +71,8 @@ export class Current {
             }, 1000);
         } else this.changed.push(id);
     }
-    getGuildSort(id) {
-        if (!this.settings.guildFolders) return 0;
+    getGuildSort(id) { 
+        if (!this.settings?.guildFolders) return 0;
         const sort = this.settings.guildFolders.guildPositions.findIndex(guild => guild == id);
         return sort < 0 ? null : sort;
     }

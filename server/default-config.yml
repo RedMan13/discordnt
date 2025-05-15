@@ -7,6 +7,8 @@ notifications:
   # the url to redirect to when the notification is clicked
   # supported keys are {guild_id} {channel_id} and {message_id}
   redirect-url: https://godslayerakp.serv00.net/discordnt.html#{channel_id}
+  # the folder where all pfps used in notifications are to be written
+  pfp-cache: './users'
 # settings for discord game integration, such as activities and in-game notifications
 rpc:
   # if discord RPC should be enabled or not

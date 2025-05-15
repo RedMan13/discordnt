@@ -25,7 +25,7 @@ export class Roles extends IndexedMap {
             break;
         case 'GUILD_ROLE_UPDATE':
         case 'GUILD_ROLE_CREATE': 
-            data.role.guild_id = guild_id;
+            data.role.guild_id = data.guild_id;
             this.set(data.role.id, data.role);
             break;
         case 'GUILD_ROLE_DELETE': 

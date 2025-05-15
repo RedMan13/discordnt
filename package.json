@@ -1,6 +1,8 @@
 {
   "scripts": {
-    "build": "build --no-token-debug true && ./make-server.sh",
+    "build": "build && ./make-server.sh",
+    "build-server": "cp -r ./node_modules ./dist/node_modules && build ./server/index.js && ./make-server.sh",
+    "build-web": "build ./discordnt.html",
     "dev": "develop",
     "start": "develop"
   },

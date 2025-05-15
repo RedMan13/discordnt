@@ -1,6 +1,4 @@
 import { IndexedMap } from "./indexed-map.js";
-import { EventSource } from "./event-source.js";
-import { checkType } from "./type-enums.js";
 
 export { IndexedMap };
 export class LimitedStore extends IndexedMap {
@@ -8,13 +6,12 @@ export class LimitedStore extends IndexedMap {
      * @param {number} max The maximum number of allowed elements
      * @param {number} min The minimum number of allowed elements
      */
-    constructor(client, min = 0, max = Infinity, strictTypes) {
+    constructor(client, min = 0, max = Infinity) {
         super(true);
         this.listeners = {};
         this.client = client;
         this.max = max;
         this.min = min;
-        this.valType = strictTypes;
     }
     /**
      * @param {number} len The amount to add
@@ -31,11 +28,6 @@ export class LimitedStore extends IndexedMap {
         size++;
         if (size < this.min)
             this.fill(this.min - size);
-
-        if (added && this.valType && !checkType(added, this.valType)) {
-            this.delete(key, true);
-            throw new TypeError(`Invalid data type given to store ${Object.prototype.toString.apply(this)} (got ${added} expected ${this.valType})`);
-        }
     }
 
     /** @param {boolean} dontCheck Cancel validating if this is correct or not */

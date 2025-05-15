@@ -2,11 +2,42 @@ import { Inflate } from 'pako';
 import { GatewayOpcode } from './type-enums.js';
 import { EventSource } from './event-source.js';
 const localStorage = globalThis.window?.localStorage ?? {};
-if (globalThis.window?.localStorage) delete window.localStorage;
+// create a fake localStorage that filters out token
+if (globalThis.window?.localStorage) {
+    delete window.localStorage;
+    window.localStorage = {
+        get length() { return localStorage.length; },
+        key(idx) { return localStorage.key(idx); },
+        getItem(key) {
+            key = `${key}`;
+            if (key === 'token') return;
+            return localStorage.get(key); 
+        },
+        setItem(key, value) {
+            localStorage.setItem(key, value);
+            if (!window.localStorage[key] && key !== 'token') {
+                Object.defineProperty(window.localStorage, key, {
+                    get() { return window.localStorage.getItem(key); },
+                    set(value) { return window.localStorage.setItem(key, value); }
+                });
+            }
+        },
+        removeItem(key) { localStorage.removeItem(key); },
+        clear() { localStorage.clear(); }
+    };
+    const keys = new Array(localStorage.length).fill('').map((_, i) => localStorage.key(i));
+    for (const key of keys) {
+        if (key === 'token') continue;
+        Object.defineProperty(window.localStorage, key, {
+            get() { return window.localStorage.getItem(key); },
+            set(value) { return window.localStorage.setItem(key, value); }
+        });
+    }
+}
 // note: this is reversed to how it should actually be shaped
 const ZLIB_SUFFIX = new Uint8Array([255, 255, 0, 0]);
 const gateway = 'wss://gateway.discord.gg';
-function stringifyError(packet, errors, indent = '') {
+export function stringifyError(packet, errors, indent = '') {
     if (errors.message) {
         if (!errors.errors) return `${errors.message} (${errors.code})`;
         let out = '';
@@ -40,9 +71,9 @@ function stringifyError(packet, errors, indent = '') {
     lines[lines.length -1] = lines[lines.length -1].slice(0, -1);
     lines.push(Array.isArray(packet) ? ']' : '}');
     return lines.map((line, idx) => idx === 0 ? line : indent + line);
-}
-
-export const DebuggerEvents = [''];
+}        
+  
+export const DebuggerEvents = ['READY', 'READY_SUPPLIMENTAL'];
 export default class ApiInterface extends EventSource {
     #token = null;
     constructor(token, version = 9) {
@@ -218,7 +249,7 @@ export default class ApiInterface extends EventSource {
             this.send(GatewayOpcode.Identify, {
                 "token": this.#token,
                 "capabilities": 16381,
-                "properties": {
+                "properties": { 
                     "os": "Win32",
                     "browser": "Mozilla",
                     "device": "",

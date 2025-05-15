@@ -10,7 +10,7 @@ import { Channels } from "../src/api/stores/channels.js";
 import { Guilds } from "../src/api/stores/guilds.js";  
 import { Current } from "../src/api/stores/current.js";  
 import { Members } from "../src/api/stores/members.js";  
-import { parseConfig, validateConfig } from './parse-config.js';
+import { parseConfig } from './parse-config.js';
 global.WebSocket = WebSocket;
 
 function info(message) {
@@ -53,21 +53,17 @@ client.on('invalid', () => {
     info('Couldnt connect to the discord gateway. Closing server.');
     process.exit();
 });
-client.on('READY', () => {
+client.on('READY', async () => {
     info('Successfully connected to the discord gateway.');
 
-    const validate = {
-        token: 'string',
-    };
     const onStartup = {};
     for (const file of fs.readdirSync(path.resolve(__dirname, 'nodes'))) {
         const { name } = path.parse(file);
         const node = require(`./nodes/${name}`);
-        validate[name] = node.validSettings;
-        validate[name].enabled = 'boolean';
         onStartup[name] = node;
     }
-    const err = validateConfig(validate, config, client);
-    if (typeof err === 'string') throw err;
-    for (const [name, func] of Object.entries(onStartup)) func(config[name], client, info)
+    for (const [name, func] of Object.entries(onStartup)) {
+        if (String(config[name].enabled).match(/^[nf]/i)) continue;
+        func(config[name], client, info);
+    }
 });

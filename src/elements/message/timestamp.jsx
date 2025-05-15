@@ -47,14 +47,8 @@ const dateStyle = {
         const years = now.getYear() - date.getYear();
         const months = now.getMonth() - date.getMonth();
         const days = now.getDate() - date.getDate();
-        const hours = now.getHours() - date.getHours();
-        const minutes = now.getMinutes() - date.getMinutes();
-        const seconds = now.getSeconds() - date.getSeconds();
-        if (years !== 0 || months !== 0 || days !== 0) return `${months}/${days}/${years}`;
-        else if (hours !== 0)   return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-        else if (minutes !== 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-        else if (seconds !== 0) return `${seconds} second${seconds > 1 ? 's' : ''} ago`;
-        return 'Just Now';
+        if (years !== 0 || months !== 0 || days !== 0) return date.toLocaleString();
+        return date.toLocaleTimeString();
     }
 }
 

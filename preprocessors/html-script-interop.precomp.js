@@ -1,8 +1,5 @@
 const {PrecompUtils} = require('builder');
-const path = require('path');
-const fs = require('fs');
 
-let tmp = 0;
 module.exports = async function(util) {
     util.tokenize({
         open: /^<script/i,
@@ -21,18 +18,16 @@ module.exports = async function(util) {
         const code = util.file.slice(codeStart, codeEnd)
         
         console.log(`\t\tinner script at L${util.findLine(codeStart)[2]} with file type ${fileType}`)
-        const tmpUtil = new PrecompUtils(path.resolve(util.path, `../tmp${tmp++}.interop.${fileType}`), code, util.manager);
-        await tmpUtil.bake(util.buildDir);
+        const tmpUtil = new PrecompUtils(`tmp.${fileType}`, code, util.manager);
         for (const precomp of util.manager.precomps) {
             if (!precomp.matchFile(tmpUtil)) continue;
             try {
                 console.log('\t\t\tappyling precomp to inner script', precomp.title)
                 await precomp(tmpUtil);
-            } finally {
-                await tmpUtil.bake(util.buildDir);
+            } catch(err) {} finally {
+                await tmpUtil.bake();
             }
         }
-        fs.rmSync(tmpUtil.path);
         util.replace(codeStart, codeEnd, tmpUtil.file);
     }
 }

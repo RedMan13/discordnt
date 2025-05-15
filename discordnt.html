@@ -92,7 +92,7 @@
             "video": 'HTMLVideoElement',
             "xmp": 'HTMLPreElement'
         };
-        // loose def for elements that dont require any direct manipulation
+        // quick def for elements that dont require any direct manipulation
         function defineElement(name, attributes, innerGen) {
             const extend = attributes.extends;
             /** @type {HTMLElement} */
@@ -108,8 +108,14 @@
                         return document.createElement(extend, { is: name });
                     super();
                     if (!this.display) this.display = this.attachShadow({ mode: 'open' });
+                    if (attributes.styles)
+                        this.shadowRoot.adoptedStyleSheets = Array.isArray(attributes.styles) 
+                            ? attributes.styles 
+                            : [attributes.styles];
+                    if (this.created) this.created(); 
                     innerGen.apply(this, [this.display]);
                     for (const [key, val] of Object.entries(attributes)) {
+                        if (key === 'styles') continue;
                         if (key.startsWith('on')) {
                             this.addEventListener(key.slice(2), val.bind(this));
                             continue;
@@ -121,11 +127,15 @@
                     onAttributes?.apply?.(this, [key, oldVal, newVal]);
                     if (key in newElement.prototype) return;
                     this[key] = newVal;
-                }
-            }
+                }    
+            } 
             for (const key in attributes) {
                 if (key.startsWith('on')) {
                     switch (key.slice(3)) {
+                    case 'created':
+                        newElement.prototype.created = attributes[key];
+                        delete attributes[key];
+                        break;
                     case 'connected':
                         newElement.prototype.connectedCallback = attributes[key];
                         delete attributes[key];
@@ -157,7 +167,7 @@
             delete attributes.extends;
             customElements.define(name, newElement, { extends: attributes.extends });
             return newElement;
-        }
+        } 
         function appendChildren(parent, children) {
             children.forEach(child => {
                 if (!child) return;
@@ -391,18 +401,45 @@
             border-left: transparent solid 5px;
             animation: throber 1s infinite;
         }
+        dialog details {
+            border: 1px solid #aaa;
+            border-radius: 4px;
+            padding: 0.5em 0.5em 0;
+            margin: 10px 0;
+        }
+        dialog summary {
+            font-weight: bold;
+            margin: -0.5em -0.5em 0;
+            padding: 0.5em;
+        }
+        dialog details[open] {
+            padding: 0.5em;
+        }
+        dialog details[open] summary {
+            border-bottom: 1px solid #aaa;
+            margin-bottom: 0.5em;
+        }
+
     </style>  
     <dialog id="login-prompt" class="login-prompt">
         <div class="header"><h3>Login to Your Account</h3></div>
         <div style="height: 100%; overflow: hidden;">
-            <div>
+            <div style="height: 100%; overflow-y: scroll;">
                 <div class="form" id="login-form">
                     <span class="label" id="login">Email:</span><br>
                     <input type="email" name="login" id="email" placeholder="some-person@here.net"/><br>
                     <span class="label" id="pass">Password:</span><br>
                     <input type="password" name="pass" id="password" placeholder="⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅"/><br>
-                    <blockquote>WARN! Accounts with authenticators are currenty unsupported. If discord requests for a captcha this prompt will fail.</blockquote>
-                    <button id="view-token" style="float: left;">User Token</button>
+                    <details>
+                        <summary>After submitting your login details, this page will process your personal data.</summary>
+                        When you log in, this page will recieve your discord token and store it. 
+                        Afterwards it will then make requests to discord on your behalf with this token. 
+                        One of these first requests will include all of your account details aswell as your email.
+                        <br>
+                        Your token will be stored to localStorage, which is visible to the entire website, and not just this web page.
+                        Please make sure that you put in an account you are ok with submitting here, and not just your main.
+                    </details>
+                    <button id="view-token" style="float: left;">Use Token</button>
                     <button id="submit-login" style="float: right;">Login</button>
                 </div>
             </div>
@@ -477,111 +514,6 @@
         <div class="throber"></div><br>
         <span id="loading-label"></span>
     </dialog>
-    <script>
-        /** @type {HTMLDialogElement} */
-        const dia = document.getElementById('login-prompt');
-        /** @type {HTMLInputElement} */
-        const email = document.getElementById('email');
-        /** @type {HTMLInputElement} */
-        const pass = document.getElementById('password');
-        /** @type {HTMLButtonElement} */
-        const login = document.getElementById('submit-login');
-        /** @type {HTMLDivElement} */
-        const form = document.getElementById('login-form');
-        /** @type {HTMLDivElement} */
-        const throber = document.getElementById('throber');
-        /** @type {HTMLSpanElement} */
-        const loginText = document.getElementById('login');
-        /** @type {HTMLSpanElement} */
-        const passText = document.getElementById('pass');
-        /** @type {HTMLDivElement} */
-        const error = document.getElementById('error');
-        /** @type {HTMLSpanElement} */
-        const message = document.getElementById('message');
-        /** @type {HTMLDialogElement} */
-        const loading = document.getElementById('loading-cover');
-        /** @type {HTMLSpanElement} */
-        const loadingLabel = document.getElementById('loading-label');
-        /** @type {HTMLDivElement} */
-        const tokenLogin = document.getElementById('login-with-token');
-        /** @type {HTMLButtonElement} */
-        const openTokenLogin = document.getElementById('view-token');
-        /** @type {HTMLInputElement} */
-        const tokenText = document.getElementById('token');
-        /** @type {HTMLButtonElement} */
-        const submitToken = document.getElementById('submit-token');
-        loading.showModal();
-
-        openTokenLogin.onclick = () => showTokenLogin();
-        submitToken.onclick = () => client.token = tokenText.value;
-
-        let challenge;
-        let ticket;  
-        // dont remove the old token, we may have been kicked here for unrelated reasons
-        function requireLogin(init = true) {
-            if (init) {
-                fetch("https://discord.com/api/v9/auth/conditional/start", { method: 'POST' })
-                    .then(req => req.json())
-                    .then(res => ({ challenge, ticket } = res));
-            }
-            form.hidden = false;
-            throber.hidden = true;
-            error.hidden = true;
-            tokenLogin.hidden = true;
-            dia.showModal();
-        }
-        function loginError(msg) {
-            form.hidden = true;
-            throber.hidden = true;
-            error.hidden = false;
-            tokenLogin.hidden = true;
-            message.textContent = msg;
-        }
-        function showLoginThrober() {
-            form.hidden = true;
-            throber.hidden = false;
-            error.hidden = true;
-            tokenLogin.hidden = true;
-        }
-        function showTokenLogin() {
-            form.hidden = true;
-            throber.hidden = true;
-            error.hidden = true;
-            tokenLogin.hidden = false;
-        }
-        function finishLoading() { loading.close() }
-        function labelLoadingStage(label) { loadingLabel.innerText = label; }
-        if (!client.token) requireLogin();
-        login.onclick = async () => {
-            showLoginThrober();
-            const res = await client.fromApi('POST /auth/login', {
-                login: email.value,
-                password: pass.value,
-                undelete: false
-            }).catch(err => err);
-            if (res.message) {
-                requireLogin(false);
-                loginText.textContent = res.message.errors.login
-                    ? `Email: ― ${res.message.errors.login._errors.map(error => error.message).join(', ')}`
-                    : 'Email:' 
-                loginText.style.color = res.message.errors.login ? '#f11' : ''
-                passText.textContent = res.message.errors.password
-                    ? `Password: ― ${res.message.errors.password._errors.map(error => error.message).join(', ')}`
-                    : 'Password:'
-                passText.style.color = res.message.errors.password ? '#f11' : ''
-                return;
-            }
-            if (res.captcha_key?.length) {
-                loginError(`Invalid captcha service required by login, service requested: ${res.captcha_service}`);
-                return;
-            }
-            if (!res.token) {
-                loginError(`Invalid login response: ${JSON.stringify(res, null, 2)}`);
-                return;
-            }
-            client.token = res.token;
-        }
-    </script>
 </head>
 <body style="margin: 0; height: 100vh; font-family: 'Open Sans', serif;" class="card-wrapper">
     <div class="browser close" style="width: 180px; left: -180px; box-shadow: 0 0 0px black;" id="browser" hidden>"filejson"</div>
@@ -616,7 +548,7 @@
     </div>
     <script file="jsx">   
         /** @import { BrowserFolder } from './builder/precomp-manager.js' */
-        const sortOrder = 'abcdefghijklmnopqrstuvwxyz';
+        const sortOrder = 'abcdefghijklmnopqrstuvwxyz1234567890';
         /**
          * makes a browser
          * @param {BrowserFolder} json - the filesystem-shape to be displayed in the browser

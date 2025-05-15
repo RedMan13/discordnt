@@ -22,54 +22,6 @@ export const managerConfig = {
 export const portRange = [6463, 6472];
 export const encodings = ['json', 'etf'];
 export const versions = { '1': require('./v1') };
-export const validSettings = {
-    permissions: [{
-        readGuilds: 'boolean',
-        whenGuildJoined: 'boolean',
-        whenGuildUpdates: 'boolean',
-        readChannels: 'boolean',
-        whenChannelCreated: 'boolean',
-        joinVoiceChannels: 'boolean',
-        whenVoiceJoined: 'boolean',
-        whenOthersJoinVoice: 'boolean',
-        whenOthersChangeVoiceSettings: 'boolean',
-        whenOthersLeaveVoice: 'boolean',
-        whenVoiceSpeaks: 'boolean',
-        whenVoiceStopsSpeaking: 'boolean',
-        readVoiceChannels: 'boolean',
-        readVoiceSettings: 'boolean',
-        writeVoiceSettings: 'boolean',
-        whenVoiceSettingsChanged: 'boolean',
-        whenVoiceConnectionChanged: 'boolean',
-        changeOthersVoiceSettings: 'boolean',
-        addHardwareMetadata: 'boolean',
-        writeActivityState: 'boolean',
-        addActivityInvites: 'boolean',
-        removeActivityInvites: 'boolean',
-        whenMessagesCreated: 'boolean',
-        whenMessagesEdited: 'boolean',
-        whenMessagesDeleted: 'boolean',
-        whenNotificationFired: 'boolean',
-        whenActivityJoinPressed: 'boolean',
-        whenActivitySpectatePressed: 'boolean',
-        whenActivityJoinRequestPressed: 'boolean',
-    }],
-    errorRequests: [{
-        readGuilds: 'boolean',
-        readChannels: 'boolean',
-        joinVoiceChannels: 'boolean',
-        readVoiceChannels: 'boolean',
-        readVoiceSettings: 'boolean',
-        writeVoiceSettings: 'boolean',
-        changeOthersVoiceSettings: 'boolean',
-        addHardwareMetadata: 'boolean',
-        writeActivityState: 'boolean',
-        addActivityInvites: 'boolean',
-        removeActivityInvites: 'boolean',
-    }],
-    blacklistedApplicationIds: ['object'],
-    whitelistedApplicationIds: ['object']
-}
 export default function(config, client, info) {
     const app = new WebSocketExpress();
     let port = portRange[0];

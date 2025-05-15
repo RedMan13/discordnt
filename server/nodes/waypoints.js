@@ -71,14 +71,6 @@ export function waypointDataToText(data) {
         .join('\n');
 }
 
-export const validSettings = {
-    directory: [['string'], { mustBe: 'folder' }],
-    worldId: 'string',
-    messageContentFragment: [['string', null], { dependsOn: 'guildId' }],
-    guildId: [['string', null], { mustBe: 'guild' }],
-    messageId: [['string', null], { dependsOn: 'channelId' }],
-    channelId: [['string', null], { mustBe: 'channel' }]
-}
 export default async function(config, client, info) {
     const waypointFile = config.worldId + '.txt';
     const overworldFolder = path.resolve(config.directory, 'dim%0');

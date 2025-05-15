@@ -172,4 +172,115 @@ export class IndexedMap extends EventSource {
         this.#keys = [];
         this.#items = Object.create(null);
     }
+    /**
+     * Only return true if the given predicate returns true for all members
+     * @param {(item: [string, any], index: number, [string, any][]) => boolean} func 
+     */
+    every(func) {
+        const items = [...this];
+        let res = true;
+        for (let i = 0; i < items.length; i++)
+            res &&= func(items[i], i, items);
+        return res;
+    }
+    /**
+     * Find one member that this predicate returns true for
+     * @param {(item: [string, any], index: number, [string, any][]) => boolean} func 
+     */
+    find(func) {
+        const items = [...this];
+        for (let i = 0; i < items.length; i++) 
+            if (func(items[i], i, items))
+                return items[i];
+    }
+    /**
+     * Find the index of one member that this predicate returns true for
+     * @param {(item: [string, any], index: number, [string, any][]) => boolean} func 
+     */
+    findIndex(func) {
+        const items = [...this];
+        for (let i = 0; i < items.length; i++) 
+            if (func(items[i], i, items))
+                return i;
+    }
+    /**
+     * Find all members that this predicate returns true for
+     * @param {(item: [string, any], index: number, [string, any][]) => boolean} func 
+     */
+    filter(func) {
+        const items = [...this];
+        const res = [];
+        for (let i = 0; i < items.length; i++) 
+            if (func(items[i], i, items))
+                res.push(items[i]);
+        return res;
+    }
+    /**
+     * Run this predicate on all members
+     * @param {(item: [string, any], index: number, [string, any][]) => void} func 
+     */
+    forEach(func) {
+        const items = [...this];
+        for (let i = 0; i < items.length; i++) 
+            func(items[i], i, items);
+    }
+    /**
+     * Mutate the contents via predicate
+     * @param {(item: [string, any], index: number, [string, any][]) => any} func 
+     */
+    map(func) {
+        const items = [...this];
+        const res = []
+        for (let i = 0; i < items.length; i++) 
+            res.push(func(items[i], i, items));
+        return res;
+    }
+    /**
+     * Reduce this map into some other data type
+     * @param {(current: any, item: [string, any], index: number, [string, any][]) => any} func 
+     * @param {any} initial what to initialize current to
+     */
+    reduce(func, initial) {
+        const items = [...this];
+        let current = initial;
+        for (let i = 0; i < items.length; i++) 
+            current = func(current, items[i], i, items);
+        return current;
+    }
+    /**
+     * Reduce this map into some other data type, but from the end of the array
+     * @param {(current: any, item: [string, any], index: number, [string, any][]) => any} func 
+     * @param {any} initial what to initialize current to
+     */
+    reduceRight(func, initial) {
+        const items = [...this];
+        let current = initial;
+        for (let i = items.length -1; i >= 0; i--) 
+            current = func(current, items[i], i, items);
+        return current;
+    }
+    /**
+     * Sort the contents of this map according to this predicate
+     * @param {(itemA: [string, any], itemB: [string, any], index: number, [string, any][]) => number} func 
+     */
+    sort(func) {
+        const items = [...this].sort(func);
+        for (let i = 0; i < items.length; i++) {
+            const idx = this.#keys.indexOf(items[i][0]);
+            const key = this.#keys.splice(idx, 1);
+            this.#keys.splice(i, 0, key);
+        }
+        return items;
+    }
+    /**
+     * Return true if this predicate returns true for one of the members
+     * @param {(item: [string, any], index: number, [string, any][]) => boolean} func 
+     */
+    some(func) {
+        const items = [...this];
+        for (let i = 0; i < items.length; i++) 
+            if (func(items[i], i, items))
+                return true;
+        return false;
+    }
 }

@@ -7,9 +7,12 @@ import { Guilds } from "./api/stores/guilds.js";
 import { Current } from "./api/stores/current.js";
 import { Roles } from "./api/stores/roles.js";
 import { Members } from "./api/stores/members.js";
+import { Favorites } from "./api/stores/favorites.js";
+import { Emojis } from "./api/stores/emojis.js";
 import { GatewayOpcode } from './api/type-enums.js';
-labelLoadingStage('Connecting client to server.');
 window.client = new ApiInterface(null, 9);
+import { labelLoadingStage, requireLogin, finishLoading } from './login.js';
+labelLoadingStage('Connecting client to server.');
 client.on('open', () => labelLoadingStage('Connected to discords gateway'));
 client.on('packet', ({ opcode }) => {
     switch (opcode) {
@@ -19,12 +22,14 @@ client.on('packet', ({ opcode }) => {
     }
 });
 client.on('invalid', () => requireLogin());
-const current  = new Current(client);  client.stores.push(current);
-const channels = new Channels(client); client.stores.push(channels);
-const users    = new Users(client);    client.stores.push(users);
-const guilds   = new Guilds(client);   client.stores.push(guilds);
-const roles    = new Roles(client);    client.stores.push(roles);
-const members  = new Members(client);  client.stores.push(members);
+const current   = new Current(client);   client.stores.push(current);
+const channels  = new Channels(client);  client.stores.push(channels);
+const users     = new Users(client);     client.stores.push(users);
+const guilds    = new Guilds(client);    client.stores.push(guilds);
+const roles     = new Roles(client);     client.stores.push(roles);
+const members   = new Members(client);   client.stores.push(members);
+const favorites = new Favorites(client); client.stores.push(favorites);
+const emojis    = new Emojis(client);    client.stores.push(emojis);
 
 import { DiscordMessage } from "./elements/message/elm.jsx";  
 import { fillViewer } from './elements/guilds/gen.jsx';
@@ -50,7 +55,9 @@ client.on('READY', () => {
     enableBrowser();
 
     const messages = new Messages(client); client.stores.push(messages);
-    labelLoadingStage('Authorized by discord. Fetching channel messages.');
+    if (!messages.channel) finishLoading();
+    else labelLoadingStage('Authorized by discord. Fetching channel messages.');
+    messages.on('failed', finishLoading);
     messages.on('loaded', () => {
         finishLoading();
         const msgId = messages.center;

@@ -21,7 +21,7 @@ export class UserAvatar extends HTMLElement {
                 member = await client.askFor('getMember', this.user);
             member ??= await client.askFor('getUser', this.user);
         }
-        if (!member) return;
+        if (!member && !this.img) return;
         if (!this.shadowRoot) this.attachShadow({ mode: 'open' });
         for (const child of this.shadowRoot.children)
             child.remove();

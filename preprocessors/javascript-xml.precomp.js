@@ -219,7 +219,7 @@ module.exports = async function(util) {
                         : '`' + value.slice(1, -1).replaceAll('`', '\\`') + '`' 
                     : 'true'},`;
             }
-            gen += `}, function(shadow) {${makeJS({
+            gen += `}, async function(shadow) {${makeJS({
                 tagname: 'div',
                 isCustom: false,
                 isEmpty: !usage.children.length,

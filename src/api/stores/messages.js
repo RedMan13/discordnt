@@ -115,7 +115,8 @@ export class Messages extends LimitedStore {
             ...(len < 100 
                 ? { after: this.get(-1) } 
                 : { [this.offset]: this.center })
-        });
+        }).catch(() => {});
+        if (!messages) return this.emit('failed');
         if (this.guild)
             // make requests for all the members in this message list
             // we dont await this as to not hold up on actually viewing the messages
@@ -137,13 +138,13 @@ export class Messages extends LimitedStore {
         this.center = message;
         this.clear();
     }
-    isChildMessage(id) {
+    isChildMessage(id) { 
         const parent = this.get(this.indexOf(id) -1);
         if (!parent || parent.id === id) return false;
         const message = this.get(id);
         const before = new Date(parent.timestamp);
         const after = new Date(message.timestamp);
-        const inTimeframe = (after - before) < 3600000;
+        const inTimeframe = Math.abs(after - before) < 2 * 60 * 60 * 1000;
         if (!(parent.author_id ?? parent.author.id)) return;
         if (!(message.author_id ?? message.author.id)) return;
         const isUser = (parent.author_id ?? parent.author.id) === (message.author_id ?? message.author.id);

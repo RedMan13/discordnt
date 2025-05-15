@@ -205,6 +205,11 @@ export const RPCErrorCodes = new Enum({
     SelectVoiceForceRequired:        5003, // You tried to join a user to a voice channel but the user was already in one.
     CaptureShortcutAlreadyListening: 5004, // You tried to capture more than one shortcut key at once.
 });
+export const FavoriteGIFTypes = new Enum({
+    NONE:  0,
+    IMAGE: 1,   
+    VIDEO: 2
+});
 export const RPCCloseCodes = new Enum({
     InvalidClientID: 4000, // You connected to the RPC server with an invalid client ID.
     InvalidOrigin:   4001, // You connected to the RPC server with an invalid origin.
@@ -212,6 +217,11 @@ export const RPCCloseCodes = new Enum({
     TokenRevoked:    4003, // The OAuth2 token associated with a connection was revoked, get a new one!
     InvalidVersion:  4004, // The RPC Server version specified in the connection string was not valid.
     InvalidEncoding: 4005, // The encoding specified in the connection string was not valid.
+});
+export const ProtoType = new Enum({
+    UserSettings:   1,
+    FrequentlyUsed: 2,
+    Unknown:        3
 });
 export const ChannelType = new Enum({
     GUILD_TEXT:          0,  // a text channel within a server

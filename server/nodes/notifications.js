@@ -1,15 +1,17 @@
 import notifier from "node-notifier";
+import path from 'node:path';
+import fs from 'node:fs';
 
-export const validSettings = { redirectUrl: 'string' };
 export default function(config, client) {
     client.on('MESSAGE_CREATE', async message => {
-        if (!await current.firesNotification(message)) return;
+        if (!await client.askFor('firesNotification', message)) return;
         console.log('Firing notification for message by', message.author.username);
-        const channel = channels.get(message.channel_id);
-        const user = await members.getMember(channel?.guild_id, message.author.id);
-        const pfp = path.resolve(usersFolder, `${message.author.id}.png`);
+        const channel = client.askFor('Channels.get', message.channel_id);
+        const user = await client.askFor('getMember', channel?.guild_id, message.author.id);
+        const pfp = path.resolve(config.pfpCache, `${message.author.id}.png`);
+        const currentUser = client.askFor('Current.user_id');
         notifier.notify({
-            title: (channel?.guild_id ?? current.user_id) === current.user_id 
+            title: (channel?.guild_id ?? currentUser) === currentUser 
                 ? `${user.username} sent you a message`
                 : `${user.username} mentioned you in ${channel.name}`,
             message: message.content + 
