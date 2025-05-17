@@ -7,7 +7,7 @@ export class Users extends LimitedStore {
         // min-num of users per conversation seems to roughly be 6, 
         // mult by the max num servers (100)
         super(client, 0, 600, User);
-        this.listens = ['READY', 'PRESENCE_UPDATE'];
+        this.listens = ['READY'];
     }
     notify(ev, data) {
         switch (ev) {
@@ -15,8 +15,6 @@ export class Users extends LimitedStore {
             for (const user of data.users)
                 this.set(user.id, user);
             break;
-        case 'PRESENCE_UPDATE':
-            const user = this.get(data.user.id);
         }
     }
     async getUser(id, forceGet) {

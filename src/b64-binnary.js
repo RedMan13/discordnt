@@ -90,5 +90,17 @@ export const Base64Binary = {
 		}
 	
 		return uarray;	
-	}
+	},
+
+    encode: function (bytes) {
+        let out = '';
+        for (let i = 0; i < bytes.length; i += 3) {
+            const num = ((bytes[i] << 16) & 0xFF0000) + ((bytes[i + 1] << 8) & 0x00FF00) + (bytes[i + 2] & 0x0000FF);
+            out += this._keyStr[(num >> 18) & 0x3F] +
+				this._keyStr[(num >> 12) & 0x3F] +
+				this._keyStr[(num >> 6) & 0x3F] +
+                this._keyStr[num & 0x3F];
+        }
+        return out.replace(/A+$/, m => '='.repeat(m.length));
+    }
 }

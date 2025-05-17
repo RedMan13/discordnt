@@ -1,28 +1,64 @@
 import { WebSocketExpress } from "websocket-express";
 import ERLP from 'erlpack';
-import { RPCCloseCodes } from "../../../src/api/type-enums";
+import net from 'node:net';
+import path from 'node:path';
+import fs from 'node:fs';
+import process from 'node:process';
+import { RPCCloseCodes, RPCIPCOpcodes } from "../../../src/api/type-enums";
 import { CDNHost } from "../../../src/api/asset-helper";
 
-/**
- * @typedef {Object} IRPCApi
- * @prop {string} clientId
- * @prop {ApiInterface} client
- * @prop {{ [key: string]: { [key: string]: boolean } | boolean }} subscriptions
- * @prop {{ cdn_url: string, api_endpoint: string, enviroment: string }} config
- * @prop {string} authNonce
- * @prop {(code: string) => void} acceptAuth
- * @prop {(code: string) => void} rejectAuth
- * @prop {(cmd: string, args: any, evt?: string) => Promise<any>}  execute
- */
 export const managerConfig = {
     cdn_host: CDNHost,
     api_endpoint: '',
     enviroment: 'develop'
 };
-export const portRange = [6463, 6472];
-export const encodings = ['json', 'etf'];
+export const encodings = {
+    'json': {
+        encode(packet) { return Buffer.from(JSON.stringify(packet)) },
+        decode(data) { return JSON.parse(data.toString('utf8')) }
+    },
+    'etf': {
+        encode(packet) { return ERLP.pack(packet) },
+        decode(data) { return ERLP.unpack(data) }
+    }
+};
 export const versions = { '1': require('./v1') };
+/** @type {IRPCApi[]} */
+const connections = [];
+/**
+ * @param {import('../../../src/api/index')} client 
+ * @param {'json'|'etf'} encoding 
+ * @param {'1'} version 
+ * @param {string} clientId 
+ * @returns {object|number}
+ */
+export async function createConnection(client, encoding, version, clientId) {
+    console.log('creating RPC client')
+    if (!(version in versions)) return [RPCCloseCodes.InvalidVersion];
+    if (!(encoding in encodings)) return [RPCCloseCodes.InvalidEncoding];
+    const appData = await client.fromApi(`GET /oauth2/applications/${clientId}/rpc`).catch(() => {});
+    if (!appData) return [RPCCloseCodes.InvalidClientID];
+    
+    /** @type {IRPCApi} */
+    const manager = new versions[version](client, clientId, managerConfig, appData);
+    connections.push(manager);
+    console.log('created RPC client')
+    return [encodings[encoding].encode({
+        cmd: 'DISPATCH', 
+        data: {
+            v: version,
+            config: managerConfig,
+            user: client.askFor('Current.user')
+        },
+        evt: 'READY'
+    }), manager];
+}
+
+export const maxPipeId = 10;
+export const portRange = [6463, 6472];
 export default function(config, client, info) {
+    /** @type {import('websocket-express').ExtendedWebSocket} */
+    const allSockets = [];
     const app = new WebSocketExpress();
     let port = portRange[0];
     function huntPorts(err) {
@@ -42,9 +78,6 @@ export default function(config, client, info) {
     }
     app.listen(port, huntPorts);
     managerConfig.api_endpoint = `http://localhost:${port}/api`;
-
-    /** @type {IRPCApi[]} */
-    const connections = [];
     app.get('/auth', (req, res) => {
         const managers = connections.filter(manager => manager.authNonce === req.query.state);
         if (managers.length <= 0) {
@@ -61,59 +94,109 @@ export default function(config, client, info) {
             if (req.query.error) return rejectAuth(req.query.error);
             acceptAuth(req.query.code);
         });
-    })
+    });
     app.ws('/', async (req, res) => {
-        if (!(req.query.version in versions)) res.reject(RPCCloseCodes.InvalidVersion);
-        if (!(encodings.includes(req.query.encoding))) res.reject(RPCCloseCodes.InvalidEncoding);
+        console.log('recieved WebSocket RPC request');
+        const { encoding = 'json', v: version, client_id } = req.query;
+        const [out, connection] = await createConnection(encoding, version, client_id);
+        if (typeof out === 'number') {
+            console.log(`rejected RPC connection for ${RPCCloseCodes[out]}`);
+            return res.reject(out);
+        }
         const sock = await res.accept();
-        const appData = await client.fromApi(`GET /oauth2/applications/${req.query.client_id}/rpc`).catch(() => {});
-        if (!appData) sock.close(RPCCloseCodes.InvalidClientID);
-        
+        sock.binaryType = 'nodebuffer';
+        connection.on('send', packet => sock.send(encodings[encoding].encode(packet)));
+        sock.onmessage = async e => {
+            const packet = encodings[encoding].decode(e.data);
+            const res = await connection.execute(packet);
+            if (!res) return;
+            sock.send(encodings[encoding].encode(res));
+        };
+    });
+    
+    /** @type {net.Socket} */
+    const allClients = [];
+    const pipe = net.createServer();
+    let pipeId = 0;
+    function getPipePath() {
+        if (process.platform === 'win32') return `\\\\?\\pipe\\discord-ipc-${pipeId}`;
+        const {
+            env: { XDG_RUNTIME_DIR, TMPDIR, TMP, TEMP }
+        } = process;
+
+        const prefix = fs.realpathSync(XDG_RUNTIME_DIR ?? TMPDIR ?? TMP ?? TEMP ?? `${path.sep}tmp`);
+        return path.join(prefix, `discord-ipc-${pipeId}`);
+    }
+    pipe.on('error', err => {
+        switch (err?.code) {
+        case null:
+        case undefined:
+            break;
+        case 'EADDRINUSE':
+            if (pipeId < maxPipeId) {
+                pipeId++; // try to next port in the sequence if this port failed, keep doing this till maxPipeId
+                pipe.listen(getPipePath());
+                break;
+            }
+        default: throw err;
+        }
+    });
+    pipe.on('connection', sock => {
+        console.log('recieved IPC RPC request');
         /** @type {IRPCApi} */
-        const manager = new versions[req.query.version](client, req.query.client_id, config, appData);
-        connections.push(manager);
-        switch (req.query.encoding) {
-        case 'json': {
-            sock.onmessage = e => {
-                const packet = JSON.parse(e.data);
-                sock.send(JSON.stringify({
-                    cmd: packet.cmd,
-                    nonce: packet.nonce,
-                    data: manager.execute(packet.cmd, packet.args, packet.evt)
-                }));
+        let connection;
+        let encoding = 'json'
+        function send(op, data) {
+            const buf = Buffer.alloc(data.length +8);
+            buf.writeUInt32LE(op, 0);
+            buf.writeUInt32LE(data.length, 4);
+            data.copy(buf, 8, 0, data.length);
+            sock.write(buf);
+        }
+        sock.on('data', async data => {
+            const op = data.readUInt32LE(0);
+            const len = data.readUInt32LE(4);
+            const str = data.subarray(8, len +8);
+            if (str.length !== len) return;
+            const packet = encodings[encoding].decode(str);
+            switch (op) {
+            case RPCIPCOpcodes.HANDSHAKE:
+                const [out, connect] = await createConnection(client, packet.encoding ?? encoding, packet.v, packet.client_id);
+                if (typeof out === 'number') {
+                    console.log(`rejected RPC connection for ${RPCCloseCodes[out]}`);
+                    send(RPCIPCOpcodes.CLOSE, encodings[encoding].encode(out));
+                    sock.end();
+                    return;
+                }
+                if (packet.encoding) encoding = packet.encoding;
+                connection = connect;
+                connection.on('send', packet => 
+                    send(RPCIPCOpcodes.FRAME, encodings[encoding].encode(packet)));
+                send(RPCIPCOpcodes.FRAME, out);
+                break;
+            case RPCIPCOpcodes.FRAME: 
+                const res = await connection.execute(packet);
+                if (!res) return;
+                send(RPCIPCOpcodes.FRAME, encodings[encoding].encode(res));
+                break;
+            case RPCIPCOpcodes.PING:
+                send(RPCIPCOpcodes.PONG, encodings[encoding].encode(packet));
+                break;
+            case RPCIPCOpcodes.CLOSE: sock.end(); break;
             }
-            sock.send(JSON.stringify({
-                cmd: 'DISPATCH', 
-                data: {
-                    v: req.query.version,
-                    config,
-                    user: client.askFor('Current.user')
-                },
-                evt: 'READY'
-            }));
-            break;
-        }
-        case 'etf': {
-            sock.binaryType = 'arraybuffer';
-            sock.onmessage = e => {
-                const packet = ERLP.unpack(e.data);
-                sock.send(ERLP.pack({
-                    cmd: packet.cmd,
-                    nonce: packet.nonce,
-                    data: manager.execute(packet.cmd, packet.args, packet.evt)
-                }));
-            }
-            sock.send(ERLP.pack({
-                cmd: 'DISPATCH', 
-                data: {
-                    v: req.query.version,
-                    config,
-                    user: client.askFor('Current.user')
-                },
-                evt: 'READY'
-            }));
-            break;
-        }
-        }
+        });
+    });
+    pipe.listen(getPipePath());
+
+    process.on('beforeExit', () => {
+        pipe.close();
+        allClients.forEach(
+            /** @param {net.Socket} client */
+            client => client.destroy()
+        );
+        allSockets.forEach(
+            /** @param {import('websocket-express').ExtendedWebSocket} sock */
+            sock => sock.close()
+        );
     });
 }

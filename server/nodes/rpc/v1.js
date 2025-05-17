@@ -1,4 +1,4 @@
-import { RPCErrorCodes } from "../../../src/api/type-enums";
+import { ActivityType } from "../../../src/api/type-enums";
 import { EventSource } from "../../../src/api/event-source";
 import { v6 as uuid } from 'uuid';
 import { stringifyError } from "../../../src/api";
@@ -31,22 +31,29 @@ export default class RPCManagerV1 extends EventSource {
         ACTIVITY_SPECTATE:       false, // sent when the user clicks a Rich Presence spectate invite in chat to spectate a game
         ACTIVITY_JOIN_REQUEST:   false, // sent when the user receives a Rich Presence Ask to Join request
     };
+    /** @type {{ [key: number]: string }} */
+    pids = {};
     /** @type {string[]} */
     scope = [];
     /** @type {ApiInterface} */
     client = null;
     /** @type {{ cdn_url: string, api_endpoint: string, enviroment: string }} */
     config = null;
+    /** @type {object} */
+    app = null;
     /** @type {string} */
     authNonce = null;
     /** @type {(code: string): void} */
     acceptAuth = null;
     /** @type {(code: string): void} */
     rejectAuth = null;
-    constructor(client, clientId, config) {
+    constructor(client, clientId, config, app) {
+        super();
+        
         this.client = client;
         this.clientId = clientId;
         this.config = config;
+        this.app = app;
 
         this.apiReqs = {};
     }
@@ -96,9 +103,17 @@ export default class RPCManagerV1 extends EventSource {
         return promise;
     }
 
-    async execute(cmd, args, evt) {
+    fireOut(evt, data) {
+        this.emit('send', {
+            cmd: 'DISPATCH',
+            data,
+            evt
+        });
+    }
+    async execute({ cmd, args, evt, nonce }) {
+        let res;
         switch (cmd) {
-        case 'AUTHORIZE':
+        case 'AUTHORIZE': {
             this.clientId ||= args.client_id;
             const state = uuid();
             const authURL = new URL('https://discord.com/oauth2/authorize');
@@ -113,11 +128,48 @@ export default class RPCManagerV1 extends EventSource {
                 this.acceptAuth = resolve;
                 this.rejectAuth = reject;
             });
-            return { code };
-        case 'AUTHENTICATE':
+            res = { code };
+        }
+        case 'AUTHENTICATE': {
             this.#token = args.access_token;
             const res = await this.fromApi('GET /oauth2/@me').catch(err => err);
-
+            break;
+        }
+        case 'SET_ACTIVITY': {
+            if (!args?.activity) args = { activity: args };
+            if (!args.activity) {
+                for (const id in this.pids)
+                    this.client.askFor('removeActivity', this.pids[id]);
+                return;
+            }
+            const actId = uuid();
+            if (args.pid) this.pids[args.pid] = actId;
+            // type whitelist
+            if (![
+                ActivityType.Playing, 
+                ActivityType.Listening, 
+                ActivityType.Watching, 
+                ActivityType.Competing
+            ].includes(args.activity?.type)) args.activity.type = 0;
+            this.client.askFor('setActivity', {
+                id: actId,
+                ...args.activity,
+                buttons: args.activity.buttons?.map?.(({ label }) => label),
+                metadata: {
+                    button_urls: args.activity.buttons?.map?.(({ url }) => url),
+                },
+                flags: (args.activity.flags ?? 0) | (args.activity.instance ? 1 : 0),
+                name: this.app.name, 
+                created_at: Date.now(),
+                application_id: this.app.id
+            });
+            return;
+        }
+        }
+        return {
+            cmd,
+            nonce,
+            data: res
         }
     }
 }

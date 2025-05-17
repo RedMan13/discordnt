@@ -1,18 +1,67 @@
 import { PreloadedUserSettings } from '../setting-protos/user-settings.proto';
 import { Base64Binary } from '../../b64-binnary.js';
 import { IndexedMap } from '../indexed-map.js';
-import { ChannelNotifications } from '../type-enums.js';
+import { ChannelNotifications, GatewayOpcode, ActivityType, ProtoType } from '../type-enums.js';
 
 export class Current {
     constructor(client) {
         this.client = client;
         this.settings = null;
+        this.settingsNeedUploaded = false;
         this.guilds = new IndexedMap(true);
         this.timeout = false;
         this.changed = [];
         this.user = null;
         this.user_id = null;
+        this.presence = {
+            since: null,
+            activities: [],
+            status: 'online',
+            afk: false
+        };
         this.listens = ['READY'];
+        setInterval(() => {
+            if (!this.settingsNeedUploaded) return;
+            this.settingsNeedUploaded = false;
+            const binnary = PreloadedUserSettings.encode(this.settings);
+            const data = Base64Binary.encode(binnary);
+            this.client.fromApi(`PATCH /users/@me/settings-proto/${ProtoType.UserSettings}`, { settings: data });
+        }, 600000);
+    }
+    setStatus(type, expires = Infinity) {
+        this.presence.status = type;
+        this.settings.status.status.value = type;
+        this.settings.status.statusExpiresAtMs = expires;
+        this.settingsNeedUploaded = true;
+        this.client.send(GatewayOpcode.PresenceUpdate, this.presence);
+    }
+    setStatusText(txt, emote, expires = Infinity) {
+        let status = this.presence.activities.find(act => act.type === ActivityType.Custom);
+        if (!status) this.presence.activities.unshift(status = { type: ActivityType.Custom });
+        status.state = txt;
+        status.emoji = emote;
+        this.settings.status.customStatus = {
+            text: txt,
+            emojiId: emote.id,
+            emojiName: emote.name,
+            createdAtMs: Date.now(),
+            expiresAtMs: expires
+        };
+        this.settingsNeedUploaded = true;
+        this.client.send(GatewayOpcode.PresenceUpdate, this.presence);
+    }
+    setActivity(obj) {
+        // respect settings on the client side aswell
+        if (!this.settings.status.showCurrentGame.value) return; 
+        let status = this.presence.activities.find(act => act.name === obj.name);
+        if (!status) this.presence.activities.unshift(status = {});
+        Object.assign(status, obj);
+        this.client.send(GatewayOpcode.PresenceUpdate, this.presence);
+    }
+    removeActivity(name) {
+        const idx = this.presence.activities.findIndex(act => act.id === name || act.name === name);
+        this.presence.activities.splice(idx, 1);
+        this.client.send(GatewayOpcode.PresenceUpdate, this.presence);
     }
     notify(ev, data) {
         switch (ev) {
@@ -21,6 +70,19 @@ export class Current {
             this.user_id = data.user.id;
             const binnary = Base64Binary.decode(data.user_settings_proto);
             this.settings = PreloadedUserSettings.decode(binnary);
+            if (this.settings.status.statusExpiresAtMs.ge(Date.now())) {
+                this.settings.status.statusExpiresAtMs = Infinity;
+                this.settings.status.status = 'online';
+                this.settingsNeedUploaded = true;
+            }
+            this.setStatus(this.settings.status.status.value, this.settings.status.statusExpiresAtMs);
+            if (this.settings.status.customStatus && this.settings.status.customStatus.expiresAtMs.lt(Date.now()))
+                this.setStatusText(this.settings.status.customStatus.text, {
+                    id: this.settings.status.customStatus.emojiId.toString(),
+                    name: this.settings.status.customStatus.emojiName
+                });
+            this.client.send(GatewayOpcode.PresenceUpdate, this.presence);
+
             for (const { guild_id, ...guild } of data.user_guild_settings.entries)
                 if (guild_id) {
                     guild.channel_overrides ??= [];

@@ -210,6 +210,13 @@ export const FavoriteGIFTypes = new Enum({
     IMAGE: 1,   
     VIDEO: 2
 });
+export const RPCIPCOpcodes = new Enum({
+    HANDSHAKE: 0,
+    FRAME:     1,
+    CLOSE:     2,
+    PING:      3,
+    PONG:      4
+});
 export const RPCCloseCodes = new Enum({
     InvalidClientID: 4000, // You connected to the RPC server with an invalid client ID.
     InvalidOrigin:   4001, // You connected to the RPC server with an invalid origin.
@@ -448,6 +455,72 @@ export const GamingGuildBadge = {
     identity_guild_id: [string, null], // the id of the guild this gg is in
     tag: [string, null]                // the four-letter tagname of the gg
 }
+export const UserStatusTypes = new Enum([
+    'online',    // Online
+    'dnd',       // Do Not Disturb
+    'idle',      // AFK
+    'invisible', // Invisible and shown as offline
+    'offline',   // Offline
+]);
+export const ActivityType = new Enum({
+    Playing:   0, // Playing {name}      "Playing Rocket League"
+    Streaming: 1, // Streaming {details} "Streaming Rocket League"
+    Listening: 2, // Listening to {name} "Listening to Spotify"
+    Watching:  3, // Watching {name}	 "Watching YouTube Together"
+    Custom:    4, // {emoji} {state}	 ":smiley: I am cool"
+    Competing: 5, // Competing in {name} "Competing in Arena World Champions"
+})
+export const Activity = {
+    name: string,                            // Activity's name
+    type: ActivityType,                      // Activity type
+    url: [string, null],                     // Stream URL, is validated when type is 1
+    created_at: number,                      // Unix timestamp (in milliseconds) of when the activity was added to the user's session
+    timestamps: [{                           // Unix timestamps for start and/or end of the game
+        start: [number, null],
+        end: [number, null],
+    }, null],
+    application_id: [string, null],          // Application ID for the game
+    details: [string, null],                 // What the player is currently doing
+    state: [string, null],                   // User's current party status, or text used for a custom status
+    emoji: [Emoji, null],                    // Emoji used for a custom status
+    party: [{                                // Information for the current party of the player
+        id: [string, null],
+        size: [{
+            0: number, // min players
+            1: number, // max players
+        }, null],
+    }, null],
+    assets: [{                               // Images for the presence and their hover texts
+        large_image: [string, null], // See Activity Asset Image
+        large_text: [string, null],  // Text displayed when hovering over the large image of the activity
+        small_image: [string, null], // See Activity Asset Image
+        small_text: [string, null],  // Text displayed when hovering over the small image of the activity
+    }, null],
+    secrets: [{                              // Secrets for Rich Presence joining and spectating
+        join: [string, null],     // Secret for joining a party
+        spectate: [string, null], // Secret for spectating a game
+        match: [string, null],    // Secret for a specific instanced match
+    }, null],
+    instance: [boolean, null],               // Whether or not the activity is an instanced game session
+    flags: [new Flags([                      // Activity flags ORd together, describes what the payload includes
+        'INSTANCE',
+        'JOIN',
+        'SPECTATE',
+        'JOIN_REQUEST',
+        'SYNC',
+        'PLAY',
+        'PARTY_PRIVACY_FRIENDS',
+        'PARTY_PRIVACY_VOICE_CHANNEL',
+        'EMBEDDED',
+    ]), null],
+    buttons: [['...', Components[1]], null], // Custom buttons shown in the Rich Presence (max 2)
+};
+export const UserPresence = {
+    since: [number, null],
+    activities: ['...', Activity],
+    status: UserStatusTypes,
+    afk: boolean
+}
 export const User = {
     id: string,                   // the user's id
     bio: [string, null],          // the user's bio
@@ -475,69 +548,7 @@ export const User = {
     }, null],
     primary_guild: [GamingGuildBadge, null], // the Gaming Guid this user is from
     clan: [GamingGuildBadge, null], // sudonym of primary_guild
-    presence: [{                  // tacked-on internally, the presence of this user
-        since: [number, null],
-        activities: ['...', {
-            name: string,                            // Activity's name
-            type: new Enum({                         // Activity type
-                Playing:   0, // Playing {name}      "Playing Rocket League"
-                Streaming: 1, // Streaming {details} "Streaming Rocket League"
-                Listening: 2, // Listening to {name} "Listening to Spotify"
-                Watching:  3, // Watching {name}	 "Watching YouTube Together"
-                Custom:    4, // {emoji} {state}	 ":smiley: I am cool"
-                Competing: 5, // Competing in {name} "Competing in Arena World Champions"
-            }),
-            url: [string, null],                     // Stream URL, is validated when type is 1
-            created_at: number,                      // Unix timestamp (in milliseconds) of when the activity was added to the user's session
-            timestamps: [{                           // Unix timestamps for start and/or end of the game
-                start: [number, null],
-                end: [number, null],
-            }, null],
-            application_id: [string, null],          // Application ID for the game
-            details: [string, null],                 // What the player is currently doing
-            state: [string, null],                   // User's current party status, or text used for a custom status
-            emoji: [Emoji, null],                    // Emoji used for a custom status
-            party: [{                                // Information for the current party of the player
-                id: [string, null],
-                size: [{
-                    0: number, // min players
-                    1: number, // max players
-                }, null],
-            }, null],
-            assets: [{                               // Images for the presence and their hover texts
-                large_image: [string, null], // See Activity Asset Image
-                large_text: [string, null],  // Text displayed when hovering over the large image of the activity
-                small_image: [string, null], // See Activity Asset Image
-                small_text: [string, null],  // Text displayed when hovering over the small image of the activity
-            }, null],
-            secrets: [{                              // Secrets for Rich Presence joining and spectating
-                join: [string, null],     // Secret for joining a party
-                spectate: [string, null], // Secret for spectating a game
-                match: [string, null],    // Secret for a specific instanced match
-            }, null],
-            instance: [boolean, null],               // Whether or not the activity is an instanced game session
-            flags: [new Flags([                      // Activity flags ORd together, describes what the payload includes
-                'INSTANCE',
-                'JOIN',
-                'SPECTATE',
-                'JOIN_REQUEST',
-                'SYNC',
-                'PLAY',
-                'PARTY_PRIVACY_FRIENDS',
-                'PARTY_PRIVACY_VOICE_CHANNEL',
-                'EMBEDDED',
-            ]), null],
-            buttons: [['...', Components[1]], null], // Custom buttons shown in the Rich Presence (max 2)
-        }],
-        status: new Enum([
-            'online',    // Online
-            'dnd',       // Do Not Disturb
-            'idle',      // AFK
-            'invisible', // Invisible and shown as offline
-            'offline',   // Offline
-        ]),
-        afk: boolean
-    }, null]
+    presence: [UserPresence, null]  // tacked-on internally, the presence of this user
 }
 Emoji.user[0] = User;
 export const Role = {
