@@ -35,7 +35,6 @@
     "scripts": "./dist/server/nodes/**/*.js",
     "assets": [
       "./dist/server/default-config.yml",
-      "./dist/server/default.png",
       "./dist/appver.txt"
     ],
     "targets": [

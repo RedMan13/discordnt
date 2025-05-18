@@ -1,9 +1,9 @@
 import YAML from "yaml";
 import fs from 'node:fs';
 import path from "node:path";
-const defaultConfig = fs.readFileSync(require.resolve('./default-config.yml'), 'utf8');
+const defaultConfig = fs.readFileSync(path.resolve(__dirname, './default-config.yml'), 'utf8');
 
-export const configPath = path.resolve('./config.yml');
+export const configPath = path.resolve(publicAsset, './config.yml');
 function camalCaseKeys(object) {
     if (typeof object !== 'object') return object;
     const out = {};

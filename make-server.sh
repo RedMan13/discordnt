@@ -1,4 +1,4 @@
-pkg -C GZip ./dist/server/index.js
+pkg -C GZip -c ./package.json ./dist/server/index.js
 mkdir ./dist/linux
 mkdir ./dist/mac
 mkdir ./dist/windows

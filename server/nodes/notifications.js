@@ -20,7 +20,7 @@ export default function(config, client) {
                     : ''),
             icon: fs.existsSync(pfp) 
                 ? pfp
-                : path.resolve('./default.png'),
+                : path.resolve(publicAsset, './default.png'),
             open: config.redirectUrl
                 .replaceAll('guild_id', channel?.guild_id ?? '@me')
                 .replaceAll('channel_id', message.channel_id)

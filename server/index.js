@@ -1,6 +1,11 @@
 #!/usr/bin/env node
-import * as fs from 'node:fs';  
+
 import * as path from 'node:path';  
+global.publicAsset = /node(\.exe)?$/.test(process.argv0)
+    ? process.cwd()
+    : path.resolve(process.argv0, '..');
+
+import * as fs from 'node:fs';  
 import notifier from 'node-notifier';  
 import WebSocket from 'ws';  
 import { Asset } from '../src/api/asset-helper.js';  
@@ -18,10 +23,10 @@ function info(message) {
     notifier.notify({
         title: 'DiscordNT Node Server',
         message,
-        icon: require.resolve('./default.png')
+        icon: path.resolve(publicAsset, './default.png')
     });
 }
-const myVersion = fs.readFileSync(require.resolve('../appver.txt'), 'utf8');
+const myVersion = fs.readFileSync(path.resolve(__dirname, '../appver.txt'), 'utf8');
 fetch('https://raw.githubusercontent.com/RedMan13/discordnt/refs/heads/main/appver.txt')
     .then(req => req.text())
     .then(version => {
