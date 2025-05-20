@@ -14,6 +14,9 @@ cp ./dist/server/default-config.yml ./dist/windows/config.yml
 cp ./README.md ./dist/linux/README
 cp ./README.md ./dist/mac/README
 cp ./README.md ./dist/windows/README
+cp -r ./dist/node_modules ./dist/linux/node_modules
+cp -r ./dist/node_modules ./dist/mac/node_modules
+cp -r ./dist/node_modules ./dist/windows/node_modules
 cd ./dist/linux
 zip -r ./linux.zip .
 mv ./linux.zip ../linux.zip
