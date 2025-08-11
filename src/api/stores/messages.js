@@ -138,7 +138,7 @@ export class Messages extends LimitedStore {
         this.center = message;
         this.clear();
     }
-    isChildMessage(id) { 
+    isChildMessage(id) {
         const parent = this.get(this.indexOf(id) -1);
         if (!parent || parent.id === id) return false;
         const message = this.get(id);

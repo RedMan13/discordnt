@@ -8,9 +8,12 @@ export class DiscordMessage extends HTMLElement {
     message = null
     reply = false;
     rendered = false;
-    constructor() { super(); }
+    client = null;
+    constructor() {
+        super();
+    }
     async getEmbeds(message) {
-        message ??= client.askFor('Messages.get', this.message);
+        message ??= this.client.askFor('Messages.get', this.message);
         if (this.reply && message.embeds.length)
             return ['<Click to view Embed>'];
         if (this.reply && message.attachments.length)
@@ -24,41 +27,56 @@ export class DiscordMessage extends HTMLElement {
             c.push({ ...v, images: v.image ? [v.image] : [] });
             return c;
         }, []).concat(message.attachments)) {
-            switch (embed.type ?? embed.content_type.split('/', 2)[0]) {
+            switch (embed.type ?? embed.content_type?.split?.('/', 2)?.[0]) {
+            default: break;
             case 'poll_result': break;
             case 'audio':
                 break;  
             case 'text':
-                const content = fetch('');
-                highlighter(embed.content_type, );
+                const content = await fetch(embed.proxy_url);
+                highlighter(embed.content_type, content);
                 break; 
-            case 'image':
             case 'video':
+                embeds.push(<div style="
+                    border-radius: 3px;
+                    margin: 1px 0px;
+                    max-width: 335px;
+                    overflow: hidden;
+                ">
+                    <video 
+                        style="max-width: 100%;" 
+                        autoplay={false}
+                        loop={false} 
+                        controls={true}
+                    >
+                        <source src={embed.proxy_url} />
+                    </video>
+                </div>);
+                break;
+            case 'image':
             case 'gifv':
-                if (Object.keys(embed).length <= 7 || !embed.type) {
-                    embeds.push(<div style="
-                        border-radius: 3px;
-                        margin: 1px 0px;
-                        max-width: 335px;
-                        overflow: hidden;
-                    ">
-                        {embed.proxy_url ? <img style="max-width: 100%;" src={embed.proxy_url}/> : null}
-                        {embed.thumbnail && !embed.video ? <img 
-                            style="max-width: 100%;" 
-                            src={embed.thumbnail.proxy_url}
-                        /> : null}
-                        {embed.video ? <video 
-                            style="max-width: 100%;" 
-                            autoplay={embed.type === 'gifv'}
-                            loop={embed.type === 'gifv'} 
-                            controls={embed.type !== 'gifv'}
-                        >
-                            <source src={embed.video.proxy_url} />
-                            {embed.thumbnail ? <img src={embed.thumbnail.proxy_url} style="max-width: 100%;"></img> : null}
-                        </video> : null}
-                    </div>);
-                    break;
-                }
+                embeds.push(<div style="
+                    border-radius: 3px;
+                    margin: 1px 0px;
+                    max-width: 335px;
+                    overflow: hidden;
+                ">
+                    {embed.proxy_url ? <img style="max-width: 100%;" src={embed.proxy_url}/> : null}
+                    {embed.thumbnail && !embed.video ? <img 
+                        style="max-width: 100%;" 
+                        src={embed.thumbnail.proxy_url}
+                    /> : null}
+                    {embed.video ? <video 
+                        style="max-width: 100%;" 
+                        autoplay={true}
+                        loop={true} 
+                        controls={false}
+                    >
+                        <source src={embed.video.proxy_url} />
+                        {embed.thumbnail ? <img src={embed.thumbnail.proxy_url} style="max-width: 100%;"></img> : null}
+                    </video> : null}
+                </div>);
+                break;
             case 'link':
             case 'article':
             case 'rich':
@@ -116,7 +134,7 @@ export class DiscordMessage extends HTMLElement {
                     {embed.title ? <span style="margin: .5rem 0px;">{
                         embed.url ? <a href={`/redirect?target=${embed.url}`}>{embed.title}</a> : embed.title
                     }</span> : null}
-                    {embed.description ? <span>{await format(embed.description)}</span> : null}
+                    {embed.description ? <span>{await format(embed.description, { client: this.client })}</span> : null}
                     {embed.fields ? await Promise.all(embed.fields.map(async field => <div 
                         style={field.inline
                             ? `
@@ -128,7 +146,7 @@ export class DiscordMessage extends HTMLElement {
                         }
                     >
                         <div style="font-weight: 600">{field.name}</div>
-                        {await format(field.value)}
+                        {await format(field.value, { client: this.client })}
                     </div>)) : null}
                     {embed.images?.length ? <div style={`
                         margin-top: 1rem;
@@ -180,10 +198,10 @@ export class DiscordMessage extends HTMLElement {
         }
         if (!this.shadowRoot) this.attachShadow({ mode: 'open' });
         this.shadowRoot.adoptedStyleSheets = [styles];
-        for (const child of this.shadowRoot.children)
-            child.remove();
+        this.shadowRoot.innerHTML = '<div></div>';
+        this.rendered = true;
 
-        const message = client.askFor('Messages.get', this.message) || this.data;
+        const message = this.client.askFor('Messages.get', this.message) || this.data;
         if (!message) return;
         const avatarSrc = message.author?.avatar 
             ? message.author.avatar.startsWith('http')
@@ -191,7 +209,7 @@ export class DiscordMessage extends HTMLElement {
                 : Asset.UserAvatar(message.author, 'webp', '256')
             : null;
         if (this.reply) {
-            this.shadowRoot.appendChild(<div
+            this.shadowRoot.replaceChild(<div
                 style="
                     display: grid;
                     grid-template-columns: 1.1rem auto minmax(auto, 1fr);
@@ -199,6 +217,7 @@ export class DiscordMessage extends HTMLElement {
                 "
             >
                 <UserAvatar 
+                    client={this.client}
                     user={message.author_id} 
                     src={avatarSrc}
                     style="
@@ -212,27 +231,28 @@ export class DiscordMessage extends HTMLElement {
                         padding: 0 4px;
                         vertical-align: super;
                     "
+                    client={this.client}
                     user={message.author_id}
                     name={message.author?.username}
                 />
                 <span style="font-size: 0.8rem">
-                    {await format(message.content)}
+                    {await format(message.content, { client: this.client })}
                     {await this.getEmbeds(message)}
                 </span>
-            </div>);
+            </div>, this.shadowRoot.firstChild);
             return;
         }
-        const compact = client.askFor('isChildMessage', this.message);
+        const compact = this.client.askFor('isChildMessage', this.message);
         if (compact) {
-            this.shadowRoot.appendChild(
+            this.shadowRoot.replaceChild( 
                 <div style="padding-left: calc(2.7rem + 8px); width: 100%;">
-                    {await format(message.content)}
+                    {await format(message.content, { client: this.client })}
                     {await this.getEmbeds(message)}
-                </div>    
+                </div>, this.shadowRoot.firstChild
             );
             return;
         }
-        this.shadowRoot.appendChild(<div 
+        this.shadowRoot.replaceChild(<div 
             style="
                 display: grid;
                 grid-template-rows: auto 1lh auto;
@@ -264,13 +284,14 @@ export class DiscordMessage extends HTMLElement {
                             const id = message.message_reference.message_id;
                             const targ = document.getElementById(id);
                             if (!targ) {
-                                client.askFor('goto', id);
+                                this.client.askFor('goto', id);
                                 return;
                             }
                             targ.scrollIntoView(targ);
                         }}
                     >
                         <DiscordMessage 
+                            client={this.client}
                             reply={true}
                             id={message.message_reference.message_id} 
                             raw={message.referenced_message}
@@ -286,37 +307,48 @@ export class DiscordMessage extends HTMLElement {
                     height: 2.7rem;
                     margin-bottom: -0.2rem;
                 "
+                client={this.client}
                 user={message.author_id} 
                 src={avatarSrc}
             />
             <div style="grid-row: 2; grid-column: 3;">
                 <Username 
+                    client={this.client}
                     user={message.author_id}
                     name={message.author?.username}
                 />
                 <TimeStamp style="padding-left: 1rem; font-size: 0.7rem" t={message.timestamp} s="M"/>
             </div>
             <div style="grid-row: 3; grid-column: 3;">
-                {await format(message.content)}
+                {await format(message.content, { client: this.client })}
                 {await this.getEmbeds(message)}
             </div>
-        </div>);
+        </div>, this.shadowRoot.firstChild);
     }
-    static observedAttributes = ['reply', 'id', 'raw'];
+    static observedAttributes = ['reply', 'id', 'raw', 'client'];
     async attributeChangedCallback(key, oldVal, newVal) {
         switch (key) {
         // in the case of message id, attempt to setup the message content as soon as possible
         case 'id': this.message = newVal; break;
         case 'reply': this.reply = typeof newVal !== 'undefined'; break;
-        case 'raw': this.data = JSON.parse(newVal); break;
+        case 'raw': this.data = newVal; break;
+        case 'client': {
+            this.client = newVal;
+            this.client.askFor('Messages.on', 'set', (id, old, msg) => {
+                const message = this.client.askFor('Messages.get', this.message);
+                if (!message) return;
+                if (msg.id !== message.id && 
+                    message.message_reference?.message_id !== msg.id && 
+                    msg.id !== this.client.askFor('Messages.get', this.client.askFor('Messages.indexOf', this.message) -1).id)
+                    return;
+                this.render();
+            });
+            break;
+        }
         }
 
-        if (!this.rendered) return;
+        if (!this.client) return;
         await this.render();
-    }
-    async connectedCallback() {
-        await this.render();
-        this.rendered = true;
     }
 }
 customElements.define('discord-message', DiscordMessage);

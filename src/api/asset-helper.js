@@ -4,6 +4,7 @@ function findBitEdge(num) {
     }
 }
 export const CDNHost = 'cdn.discordapp.com';
+export const isDiscord = /^https?:\/\/(?:[a-z-\-0-9]+\.)?discord(?:app)?\.(?:com|net)/;
 const map = (url, types) => {
     let funcStr = `return \`https://${CDNHost}/`;
     let lastIdx = 0;

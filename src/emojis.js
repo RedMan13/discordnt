@@ -3816,10 +3816,10 @@ export const Categories = {
     "Flags":    [1655, 1924]
 }
 export function getChar(name) {
-    return Emojis.find(emoji => emoji.names.includes(name)).surrogates;
+    return Emojis.find(emoji => emoji.names.includes(name))?.surrogates;
 }
 export function getName(char) {
-    return Emojis.find(emoji => emoji.surrogates === char).name;
+    return Emojis.find(emoji => emoji.surrogates === char)?.name;
 }
 export function toUrl(code) {
     return 'https://cdn.jsdelivr.net/gh/twitter/twemoji@master/assets/svg/' + 

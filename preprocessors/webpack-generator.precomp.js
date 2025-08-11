@@ -30,6 +30,7 @@ async function jsGen(locPath, imp, util) {
     }
     class ImportError extends Error {}
     const validExts = ['.js', '.mjs', '.cjs', '.json'];
+    const coreModules = ['assert', 'async_hooks', 'buffer', 'child_process', 'cluster', 'console', 'crypto', 'diagnostics_channel', 'dns', 'domain', 'events', 'fs', 'http', 'http2', 'https', 'inspector', 'module', 'net', 'os', 'path', 'perf_hooks', 'process', 'punycode', 'querystring', 'quic', 'readline', 'repl', 'sqlite', 'stream', 'string_decoder', 'test', 'tls', 'trace_events', 'tty', 'dgram', 'url', 'util', 'v8', 'vm', 'wasi', 'worker_threads', 'zlib'];
     const ranFiles = {};
     const binTexDecoder = new TextDecoder();
     const domParser = new DOMParser();
@@ -74,8 +75,12 @@ async function jsGen(locPath, imp, util) {
                 file = path.join('/');
                 file += validExts[triedExt++];
             }
-            if (!(file in webpackFiles) && !globalThis.require)
-                throw new ImportError(\`Could not locate a module at ./\${file} from \${root}. tried \${JSON.stringify(allTried, null, 4)}\`);
+            if (!(file in webpackFiles) && !globalThis.require) {
+                if (!coreModules.includes(file))
+                    throw new ImportError(\`Could not locate a module at ./\${file} from \${root}. tried \${JSON.stringify(allTried, null, 4)}\`);
+                else
+                    return console.warn(\`\${file} should have a valid browser shim!\`);
+            }
             if (!(file in webpackFiles) && globalThis.require)
                 return require(old, props);
             if (file in ranFiles)

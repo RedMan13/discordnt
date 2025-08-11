@@ -1,6 +1,9 @@
 const {PrecompUtils} = require('builder');
 
 module.exports = async function(util) {
+    // webpack my beloved
+    const isWebpack = typeof util === 'string';
+    if (isWebpack) util = new PrecompUtils('', util);
     util.tokenize({
         open: /^<script/i,
         // use file="fileType" syntax to define a script to be treated as if it was this file
@@ -30,5 +33,7 @@ module.exports = async function(util) {
         }
         util.replace(codeStart, codeEnd, tmpUtil.file);
     }
+    if (isWebpack) await util.bake();
+    return util.file;
 }
 module.exports.matchFile = util => util.matchType('php,html');

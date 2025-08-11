@@ -1,81 +1,122 @@
-import { format, writerSyntax, styles } from "./render-md";
+import { format, writerSyntax, styles } from "./render-md.jsx";
 import { MediaPicker } from "./media-picker.jsx";
+import quillStyles from 'quill/dist/quill.bubble.css';
+import Quill from '../../../preprocessors/babel-deshitifier!quill';
 
-// this is fucking dumb as shit
-// why on earth wont the fucking browser just let me have a TEXT cursor, 
-// a cursor that is set to a CHARACTER position and reads back as TEXT location
-/**
- * get an ACTUAL cursor position, instead of dumb ass bullshit we cant do anything with
- * @param {Range} range 
- * @param {HTMLElement} top 
- */
-function resolveTextCursor(range, top) {
-    let start = range.startOffset;
-    let foundStart = false;
-    let end = range.endOffset;
-    let foundEnd = false;
-    /** @param {HTMLElement} el */
-    const recur = el => {
-        for (const child of el.childNodes) {
-            if (range.startContainer === child) foundStart = true;
-            if (range.endContainer === child) foundEnd = true;
-            if (foundStart && foundEnd) break;
-            if (child.nodeType === child.TEXT_NODE) {
-                if (!foundStart) start += child.textContent.length;
-                if (!foundEnd) end += child.textContent.length;
-                continue;
-            }
-            recur(child);
-        }
-    }
-    recur(top);
-    return [start, end];
-}
-/**
- * @param {Range} range 
- * @param {number} start 
- * @param {number} end 
- * @param {HTMLElement} top 
- */
-function applyCursorPosition(range, start, end, top) {
-    let appliedStart = false;
-    let appliedEnd = false;
-    const recur = el => {
-        for (const child of el.childNodes) {
-            if (appliedStart && appliedEnd) break;
-            if (child.nodeType === child.TEXT_NODE) {
-                if (start <= child.textContent.length) {
-                    appliedStart = true;
-                    range.setStart(child, start);
-                }
-                if (end <= child.textContent.length) {
-                    appliedEnd = true;
-                    range.setEnd(child, end);
-                }
-                if (!appliedStart) start -= child.textContent.length;
-                if (!appliedEnd) end -= child.textContent.length;
-                continue;
-            }
-            recur(child);
-        }
-    }
-    recur(top);
-}
 export const MessageEditor = <define
-    styles={styles}
+    styles={[styles,quillStyles]}
     this={{
         async send() {
             /** @type {HTMLTextAreaElement} */
             const editor = this.display.getElementById('editor');
-            const here = client.askFor('Messages.channel');
-            await client.fromApi(`POST /channels/${here}/messages`, {
-                content: editor.textContent
+            const here = this.client.askFor('Messages.channel');
+            await this.client.fromApi(`POST /channels/${here}/messages`, {
+                content: this.quill.getText()
             });
-            editor.value = '';
+            this.quill.setText('');
+        },
+        quill: null
+    }}
+    on:connected={function() {
+        if (!this.quill) {
+            const editor = this.display.getElementById('editor');
+            const quill = this.quill = new Quill(editor, {
+                theme: 'bubble'
+            });
+            // copied from https://github.com/slab/quill/issues/2021#issuecomment-1776007758
+            const hasShadowRootSelection = !!(document.createElement('div').attachShadow({ mode: 'open' }).getSelection);
+            // Each browser engine has a different implementation for retrieving the Range
+            const getNativeRange = (rootNode) => {
+                try {
+                    if (hasShadowRootSelection) {
+                        // In Chromium, the shadow root has a getSelection function which returns the range
+                        return rootNode.getSelection().getRangeAt(0);
+                    } else {
+                        const selection = window.getSelection();
+                        if (selection.getComposedRanges) {
+                            // Webkit range retrieval is done with getComposedRanges (see: https://bugs.webkit.org/show_bug.cgi?id=163921)
+                            return selection.getComposedRanges(rootNode)[0];
+                        } else {
+                            // Gecko implements the range API properly in Native Shadow: https://developer.mozilla.org/en-US/docs/Web/API/Selection/getRangeAt
+                            return selection.getRangeAt(0);
+                        }
+                    }
+                } catch {
+                    return null;
+                }
+            }
+
+            /** 
+             * Original implementation uses document.active element which does not work in Native Shadow.
+             * Replace document.activeElement with shadowRoot.activeElement
+             **/
+            quill.selection.hasFocus = function () {
+                const rootNode = quill.root.getRootNode();
+                return rootNode.activeElement === quill.root;
+            }
+
+            /** 
+             * Original implementation uses document.getSelection which does not work in Native Shadow. 
+             * Replace document.getSelection with shadow dom equivalent (different for each browser)
+             **/
+            quill.selection.getNativeRange = function () {
+                const rootNode = quill.root.getRootNode();
+                const nativeRange = getNativeRange(rootNode);
+                return !!nativeRange ? quill.selection.normalizeNative(nativeRange) : null;
+            };
+
+            /**
+             * Original implementation relies on Selection.addRange to programatically set the range, which does not work
+             * in Webkit with Native Shadow. Selection.addRange works fine in Chromium and Gecko.
+             **/
+            quill.selection.setNativeRange = function (startNode, startOffset) {
+                var endNode = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : startNode;
+                var endOffset = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : startOffset;
+                var force = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : false;
+                if (startNode != null && (quill.selection.root.parentNode == null || startNode.parentNode == null || endNode.parentNode == null)) {
+                    return;
+                }
+                var selection = document.getSelection();
+                if (selection == null) return;
+                if (startNode != null) {
+                    if (!quill.selection.hasFocus()) quill.selection.root.focus();
+                    var native = (quill.selection.getNativeRange() || {}).native;
+                    if (native == null || force || startNode !== native.startContainer || startOffset !== native.startOffset || endNode !== native.endContainer || endOffset !== native.endOffset) {
+                        if (startNode.tagName == "BR") {
+                            startOffset = [].indexOf.call(startNode.parentNode.childNodes, startNode);
+                            startNode = startNode.parentNode;
+                        }
+                        if (endNode.tagName == "BR") {
+                            endOffset = [].indexOf.call(endNode.parentNode.childNodes, endNode);
+                            endNode = endNode.parentNode;
+                        }
+                        selection.setBaseAndExtent(startNode, startOffset, endNode, endOffset);
+                    }
+                } else {
+                    selection.removeAllRanges();
+                    quill.selection.root.blur();
+                    document.body.focus();
+                }
+            }
+
+            /**
+             * Subscribe to selection change separately, because emitter in Quill doesn't catch this event in Shadow DOM
+             **/
+            const handleSelectionChange = function () {
+                quill.selection.update();
+            };
+
+            document.addEventListener("selectionchange", handleSelectionChange);
+        }
+    }}
+    attributes={['client']}
+    on:attributes={function (key, old, newVal) {
+        switch (key) {
+        case 'client': this.client = newVal; break;
         }
     }}
 >
-    <MediaPicker hidden id="media-picker" style="position: absolute; right: 10px; bottom: 80px; "/>
+    <MediaPicker client={this.client} hidden id="media-picker" style="position: absolute; right: 10px; bottom: 80px; "/>
     <div class="message-render" style="
         display: grid;
         font: inherit;
@@ -98,23 +139,7 @@ export const MessageEditor = <define
                 resize: none;
                 font-family: 'Open Sans', serif;
             " 
-            autofocus 
-            contenteditable
-            on:keyup={async e => {
-                /** @type {HTMLDivElement} */
-                const editor = this.display.getElementById('editor');
-                const selection = window.getSelection();
-                const range = selection.getRangeAt(0);
-                const [start, end] = resolveTextCursor(range, editor);
-                const entered = editor.textContent;
-                editor.innerHTML = '';
-                const formated = await format(entered, false, writerSyntax);
-                appendChildren(editor, formated);
-                applyCursorPosition(range, start, end, editor);
-                if (e.shiftKey) return;
-                if (e.key !== 'Enter') return;
-                this.send();
-            }} 
+            autofocus
         ></div><br/>
         <button on:click={() => {
             const picker = this.display.getElementById('media-picker');

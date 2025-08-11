@@ -14,14 +14,16 @@
     padding: 1px 2px;
 }
 .message-render .external-code {
-    border: 1px solid rgba(0, 0, 0, 0.20);
+    border: 1px solid rgba(255, 255, 255, 0.20);
     border-radius: 2px;
-    background-color: rgba(0, 0, 0, 0.20);
+    background-color: rgba(0, 0, 0, 0.75);
+    color: var(--white);
     font-family: monospace;
     padding: 0.3rem;
     border-radius: 7px;
     margin-right: 0.3rem;
     display: block;
+    white-space: preserve;
 }
 .message-render .emoji {
     display: inline-block;
@@ -53,3 +55,73 @@
     margin-top: 0.2rem;
     margin-bottom: 0.2rem;
 }
+
+.message-render {
+    --black: #000000; 
+    --red: #CD3131; 
+    --green: #0DBC79; 
+    --yellow: #E5E510; 
+    --blue: #2472C8; 
+    --purple: #BC3FBC; 
+    --cyan: #11A8CD; 
+    --white: #E5E5E5;
+    --bright-black: #666666; 
+    --bright-red: #F14C4C; 
+    --bright-green: #23D18B; 
+    --bright-yellow: #F5F543; 
+    --bright-blue: #3B8EEA; 
+    --bright-purple: #D670D6; 
+    --bright-cyan: #29B8DB; 
+    --bright-white: #E5E5E5;
+}
+.hljs-symbol,
+.hljs-keyword,
+.hljs-built_in,
+.hljs-function,
+.hljs-variable.hljs-language,
+.hljs-doctag,
+.hljs-meta .hljs-keyword,
+.hljs-name,
+.hljs-bullet,
+.hljs-formula,
+.hljs-quote,
+.hljs-template-tag,
+.hljs-literal { color: var(--blue); }
+.hljs-class,
+.hljs-title.class_,
+.hljs-title.class_.inherited_,
+.hljs-type { color: var(--green); }
+.hljs-number { color: var(--bright-green); }
+.hljs-operator { color: var(--bright-white); }
+.hljs-punctuation { color: var(--purple); }
+.hljs-property { color: var(--bright-cyan); }
+.hljs-regexp { color: var(--red); }
+.hljs-meta .hljs-string,
+.hljs-code,
+.hljs-emphasis,
+.hljs-strong,
+.hljs-selector-tag,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-selector-attr,
+.hljs-selector-psuedo,
+.hljs-string { color: var(--bright-yellow); }
+.hljs-char.hljs-escape { color: var(--yellow); }
+.hljs-subst { color: var(--yellow); }
+.hljs-title,
+.hljs-params,
+.hljs-section,
+.hljs-attr,
+.hljs-attribute,
+.hljs-template-variable,
+.hljs-variable { color: var(--bright-cyan); }
+.hljs-variable.hljs-constant { color: var(--bright-cyan); }
+.hljs-title.function_,
+.hljs-meta.prompt_,
+.hljs-title.function_.invoke_ { color: var(--yellow); }
+.hljs-comment { color: var(--green); }
+.hljs-tag,
+.hljs-meta { color: var(--purple); }
+.hljs-link { color: var(--cyan); }
+.hljs-addition { color: var(--green); background-color: var(--bright-green); }
+.hljs-deletion { color: var(--red); background-color: var(--bright-red); }

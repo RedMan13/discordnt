@@ -12,7 +12,7 @@ import GuildMediaIcon from './guild-media.svg';
 
 const userDms = 'user-dms';
 let viewingGuild = '';
-export function fillGuilds() {
+export function fillGuilds(client) {
     const root = document.getElementById('browser');
     const guildsBar = <div style="
         display: inline-block;
@@ -60,7 +60,7 @@ export function fillGuilds() {
                     if (next)
                         next.style.borderRadius = '0.5rem';
                     viewingGuild = guild.id;
-                    fillChannels();
+                    fillChannels(client);
                 }}
             >
                 {guild.icon
@@ -115,7 +115,7 @@ export function fillGuilds() {
     }
 }
 
-async function generateChannels(folder, hide) {
+async function generateChannels(client, folder, hide) {
     const selected = client.askFor('Messages.channel');
     const out = <div style="
         width: max-content;
@@ -123,7 +123,7 @@ async function generateChannels(folder, hide) {
     "></div>;
     for (const [idx, channel] of Object.entries(folder.sort((a,b) => a.sort - b.sort))) { 
         if (channel.type === ChannelType.GUILD_CATEGORY) {
-            const gen = await generateChannels(channel.members, channel.collapsed || hide);
+            const gen = await generateChannels(client, channel.members, channel.collapsed || hide);
             out.appendChild(<div>
                 <div 
                     style="cursor: pointer;" 
@@ -231,13 +231,13 @@ async function generateChannels(folder, hide) {
     }
     return out;
 }
-export async function fillChannels() {
+export async function fillChannels(client) {
     const root = document.getElementById('browser');
     const channels = client.askFor('Channels.toFolders', viewingGuild === userDms
         ? client.askFor('user_id')
         : viewingGuild
     );
-    const gen = await generateChannels(channels);
+    const gen = await generateChannels(client, channels);
     const old = document.getElementById('guild-channels');
     old?.remove?.()
     root.appendChild(<div 
@@ -250,12 +250,12 @@ export async function fillChannels() {
         "
     >{gen}</div>);
 }
-export async function fillViewer() {
+export async function fillViewer(client) {
     const root = document.getElementById('browser');
     root.innerHTML = '';
     root.style.display = 'grid';
     root.style.gridTemplateColumns = 'auto auto';
     viewingGuild = client.askFor('Messages.guild') || userDms;
-    fillGuilds();
-    fillChannels();
+    fillGuilds(client);
+    fillChannels(client);
 }

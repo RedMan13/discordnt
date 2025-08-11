@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<%
+const fs = require('fs');
+const path = require('path');
+const root = htmlWebpackPlugin.options.pathTo;
+const develop = htmlWebpackPlugin.options.develop;
+%>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>DiscordNT</title>
+    <meta name="author" content="godslayerakp">
+    <meta name="description" content="a rebuilt from-the-grounp-up version of the discord gui">
+    <meta name="keywords" content="discord,client,mod,tampermonkey,userscript">
+    <meta name="creator" content="godslayerakp">
+    <meta name="theme-color" content="white">
+    <meta name="color-scheme" content="light">
+    <meta name="robots" content="nosnippet">
+    <meta name="keywords" content="gsa,godslayerakp,redman13,thyme1time23,giveminecraftstone,building-x">
+    <meta name="theme-color" content="white">
+    <meta name="color-scheme" content="light">
+    <script>
+        // prevent undefined errors from being created when tryin to find one of these
+        window.__webpack_module__ = window.__unused_webpack_module = window.module = null;
+        window.__webpack_exports__ = window.__unused_webpack_exports = window.exports = null;
+        window.__webpack_require__ = window.__unused_webpack_require = window.require = null;
+    </script>
+    <%= develop 
+        ? '<script src="./jsxHelpers.js"></script>' 
+        : `<script>${compilation.assets['jsxHelpers.js'].source()}</script>`
+    %>
+    <%= develop 
+        ? '<script src="./long.js"></script>' 
+        : `<script>${compilation.assets['long.js'].source()}</script>`
+    %>
+
+    <style><%= fs.readFileSync(path.resolve(root, './browser.css'), 'utf8') %></style>
+    <!-- Login bootstrap -->
+    <style><%= fs.readFileSync(path.resolve(root, './login.css'), 'utf8') %></style>  
+    <dialog id="login-prompt" class="login-prompt">
+        <div class="header"><h3>Login to Your Account</h3></div>
+        <div style="height: 100%; overflow: hidden;">
+            <div style="height: 100%; overflow-y: scroll;">
+                <div class="form" id="login-form">
+                    <span class="label" id="login">Email:</span><br>
+                    <input type="email" name="login" id="email" placeholder="some-person@here.net"/><br>
+                    <span class="label" id="pass">Password:</span><br>
+                    <input type="password" name="pass" id="password" placeholder="⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅"/><br>
+                    <details>
+                        <summary>After submitting your login details, this page will process your personal data.</summary>
+                        When you log in, this page will recieve your discord token and store it. 
+                        Afterwards it will then make requests to discord on your behalf with this token. 
+                        One of these first requests will include all of your account details aswell as your email.
+                        <br>
+                        Your token will be stored to localStorage, which is visible to the entire website, and not just this web page.
+                        Please make sure that you put in an account you are ok with submitting here, and not just your main.
+                    </details>
+                    <button id="view-token" style="float: left;">Use Token</button>
+                    <button id="submit-login" style="float: right;">Login</button>
+                </div>
+            </div>
+            <div class="throber-container">
+                <div id="throber" class="throber" hidden></div>
+            </div>
+            <div style="width: 100%; height: 100%;" id="error" hidden>
+                <svg
+                    style="
+                        display: block;
+                        margin-left: auto;
+                        margin-right: auto;
+                        width: 4lh;
+                        height: 4lh;
+                        margin-top: 20px;
+                        margin-bottom: 20px;
+                    "
+                    viewBox="0 0 10 10"
+                    width="10"
+                    height="10"
+                    fill="#e44"
+                    stroke="#d44"
+                    stroke-width="1"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path d="
+                        M 3.17 0.73
+                        h 3.66
+                        l 2.44 2.44
+                        v 3.66
+                        l -2.44 2.44
+                        h -3.66
+                        l -2.44 -2.44
+                        v -3.66
+                        z
+                    "/>
+                    <path d="
+                        M 3 3
+                        L 7 7
+                        M 7 3
+                        L 3 7
+                    " stroke="black"/>
+                </svg><br>
+                <div style="display: block; text-align: center; width: 100%;">
+                    <span id="message">Oopsies you arnt meant to see this</span>
+                </div>
+            </div>
+            <div style="height: 100%; overflow-y: scroll;" id="login-with-token" hidden>
+                <div id="raw-token" class="form">
+                    To get your token, do the following
+                    <ul>
+                        <li>goto https://discord.com/app</li>
+                        <li>login to the account you wish to link to this server</li>
+                        <li>open inspect element (F12 or ctrl + shift + C)</li>
+                        <li>open the <code>Network</code> tab (if its not there, check inside the <code>>></code>/<code>+</code> menu in the tab bar)</li>
+                        <li>set the network requests filter to <code>XHR</code>/<code>Fetch</code></li>
+                        <li>send a message in any channel</li>
+                        <li>select the most recent request, or the request marked <code></code>messages</code> if the following cant be performed</li>
+                        <li>look for the entry <code>Authorization</code>, if you cant find it retry on the request marked `messages`</li>
+                        <li>copy the token inside the value</li>
+                    </ul>
+                    <span class="label" id="login">Token:</span><br>
+                    <input type="password" id="token" placeholder="B64UserId.B64RegistrarId.B64UniqueHash"></input>
+                    <div style="width: 100%; height: 34px;"></div> 
+                    <button id="submit-token" style="float: right;">Login</button>
+                </div>
+            </div>
+        </div>
+    </dialog>     
+    <dialog id="loading-cover" class="throber-container" style="width: max-content; height: max-content;">
+        <div class="throber"></div><br>
+        <span id="loading-label"></span>
+    </dialog>
+</head>
+<body style="margin: 0; height: 100vh; font-family: 'Open Sans', serif;" class="card-wrapper">
+    <div class="browser close" style="width: 180px; left: -180px; box-shadow: 0 0 0px black;" id="browser" hidden>"filejson"</div>
+    <button id="close-browser" style="left: 0px;" class="close-browser close" hidden>&gt;</button>
+    <div style="
+        position: absolute;
+        width: 10px;
+        cursor: ew-resize;
+        height: 100%;
+        left: -5px;
+        z-index: 4;
+
+        display: flex;
+        justify-content: left;
+        align-items: center;
+    " id="resize">
+        <div style="      
+            width: 0px;
+            height: 40px;
+            border-top-left-radius: 5px;
+            border-bottom-left-radius: 5px;
+            border: 1px solid grey;
+            border-right-width: 0;
+            padding: 4px 2px;
+            background-color: white;
+        ">
+            <div style="
+                border-left: 1px solid black;
+                height: 100%;
+            "></div>
+        </div>
+    </div>
+    <%= develop 
+        ? '<script src="./browser.js"></script>' 
+        : `<script>${compilation.assets['browser.js'].source()}</script>`
+    %>
+    <div style="
+        width: 100%; 
+        height: 100%; 
+        overflow-wrap: break-word; 
+        overflow-x: hidden; 
+        overflow-y: auto; 
+        position: absolute;
+    ">
+        <div id="main"></div>
+    </div>
+</body>
+<%= develop 
+    ? '<script src="./page.js"></script>' 
+    : `<script>${compilation.assets['page.js'].source()}</script>`
+%>

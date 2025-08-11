@@ -50,11 +50,18 @@ export class Current {
         this.settingsNeedUploaded = true;
         this.client.send(GatewayOpcode.PresenceUpdate, this.presence);
     }
-    setActivity(obj) {
+    async setActivity(obj) {
         // respect settings on the client side aswell
         if (!this.settings.status.showCurrentGame.value) return; 
         let status = this.presence.activities.find(act => act.name === obj.name);
         if (!status) this.presence.activities.unshift(status = {});
+        if (obj.assets) {
+            const urls = await this.client.fromApi(`POST /applications/${obj.application_id}/external-assets`, {
+                urls: [obj.assets.large_image, obj.assets.small_image]
+            });
+            obj.assets.large_image = 'mp:' + urls[0].external_asset_path;
+            obj.assets.small_image = 'mp:' + urls[1].external_asset_path;
+        }
         Object.assign(status, obj);
         this.client.send(GatewayOpcode.PresenceUpdate, this.presence);
     }

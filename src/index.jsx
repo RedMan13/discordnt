@@ -1,4 +1,3 @@
-import Long from "long"; // import to ensure existence in node modules
 import ApiInterface from "./api/index.js";
 import { Messages } from "./api/stores/messages.js";
 import { Users } from "./api/stores/users.js";
@@ -10,8 +9,11 @@ import { Members } from "./api/stores/members.js";
 import { Favorites } from "./api/stores/favorites.js";
 import { Emojis } from "./api/stores/emojis.js";
 import { GatewayOpcode } from './api/type-enums.js';
-window.client = new ApiInterface(null, 9);
-import { labelLoadingStage, requireLogin, finishLoading } from './login.js';
+import { enableBrowser } from "./browser-capture.js";
+import build from './login.js';
+const client = new ApiInterface(null, 9);
+window.client = client;
+const { labelLoadingStage, requireLogin, finishLoading } = build(client);
 labelLoadingStage('Connecting client to server.');
 client.on('open', () => labelLoadingStage('Connected to discords gateway'));
 client.on('packet', ({ opcode }) => {
@@ -47,11 +49,11 @@ const wrapper = <div style="
     overflow-y: scroll;
 "></div>;
 main.appendChild(wrapper);
-main.appendChild(<MessageEditor></MessageEditor>);
+main.appendChild(<MessageEditor client={client}></MessageEditor>);
 const root = <div></div>;
 wrapper.appendChild(root);
 client.on('READY', () => {
-    fillViewer();
+    fillViewer(client);
     enableBrowser();
 
     const messages = new Messages(client); client.stores.push(messages);
@@ -66,16 +68,18 @@ client.on('READY', () => {
         msg.scrollIntoView();
     })
     messages.on('push', id => {
-        const msg = <DiscordMessage id={id}></DiscordMessage>;
+        if (document.getElementById(id)) return;
+        const msg = <DiscordMessage id={id} client={client}></DiscordMessage>;
         root.append(msg);
     });
     messages.on('insert', (idx, id) => {
+        if (document.getElementById(id)) return;
         const insert = root.children[idx -1];
         if (!insert) {
-            root.prepend(<DiscordMessage id={id}></DiscordMessage>);
+            root.prepend(<DiscordMessage id={id} client={client}></DiscordMessage>);
             return;
         }
-        insert.after(<DiscordMessage id={id}></DiscordMessage>);
+        insert.after(<DiscordMessage id={id} client={client}></DiscordMessage>);
     });
     messages.on('move', (id, oldIdx, newIdx) => {
         const msg = document.getElementById(id);

@@ -53,6 +53,7 @@ export class IndexedMap extends EventSource {
         if (typeof key === 'number') 
             key = this.#keys[key];
 
+        const existed = this.#items[key];
         if (this.assigns && this.#keys.includes(key))
             Object.assign(this.#items[key], value);
         else
@@ -62,8 +63,8 @@ export class IndexedMap extends EventSource {
 
         const old = this.#items[key];
         this.emit('set', key, old, value);
-        this.emit('push', key, old, value);
-        this.emit('changed', [key, old, value]);
+        if (!existed) this.emit('push', key, old, value);
+        if (existed) this.emit('changed', [key, old, value]);
         return this.#keys.length;
     }
 

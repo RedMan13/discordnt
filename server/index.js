@@ -16,6 +16,7 @@ import { Guilds } from "../src/api/stores/guilds.js";
 import { Current } from "../src/api/stores/current.js";  
 import { Members } from "../src/api/stores/members.js";  
 import { parseConfig } from './parse-config.js';
+import nodes from './nodes';
 global.WebSocket = WebSocket;
 
 function info(message) {
@@ -26,13 +27,16 @@ function info(message) {
         icon: path.resolve(publicAsset, './default.png')
     });
 }
+/* no real reason for this is there
 const myVersion = fs.readFileSync(path.resolve(__dirname, '../appver.txt'), 'utf8');
 fetch('https://raw.githubusercontent.com/RedMan13/discordnt/refs/heads/main/appver.txt')
     .then(req => req.text())
     .then(version => {
         if (myVersion !== version)
             info('New app version released! please check the website for more info and downloads.');
-    });
+    })
+    .catch(() => {});
+*/
 const config = parseConfig();
 const usersFolder = path.resolve('./users');
 
@@ -62,9 +66,9 @@ client.on('READY', async () => {
     info('Successfully connected to the discord gateway.');
 
     const onStartup = {};
-    for (const file of fs.readdirSync(path.resolve(__dirname, 'nodes'))) {
+    for (const file in nodes) {
         const { name } = path.parse(file);
-        const node = require(`./nodes/${name}`);
+        const node = nodes[name];
         onStartup[name] = node;
     }
     for (const [name, func] of Object.entries(onStartup)) {

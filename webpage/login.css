@@ -1,0 +1,97 @@
+.login-prompt[open] {
+    background-color: white;
+    border-color: darkgrey;
+    border-style: solid;
+    border-width: 1px;
+    border-radius: 4px;
+    box-shadow: 0px 0px 20px black;
+    overflow: hidden;
+    position: absolute;
+    z-index: 1;
+    aspect-ratio: 55/39;
+    width: 425px;
+    padding: 0px;
+    display: grid;
+    grid-template-rows: max-content 1fr;
+}
+.login-prompt::backdrop {
+    background: linear-gradient(to bottom, rgb(48, 127, 201) 0px, #0195FA 100vh);
+}
+dialog .form {
+    padding: 10px;
+    contain: layout;
+}
+dialog .header {
+    width: 100%;
+    background-color: #999;
+}
+dialog .header h3 {
+    text-align: center;
+    margin: 0px;
+    padding: 10px;
+}
+dialog .label {
+    margin-top: 5px;
+    font-size: small;
+    font-weight: bold;
+    color: #444;
+    display: inline-block;
+}
+dialog input[type="email"],
+dialog input[type="password"] {
+    padding: 5px;
+    border-radius: 5px;
+    border-width: 1px;
+    border-color: grey;
+    width: calc(100% - 11px);
+}
+dialog button {
+    padding: 5px;
+    border-radius: 5px;
+    border-width: 1px;
+    border-color: grey;
+}
+@keyframes throber {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+.throber-container[open] {
+    width: 100%; 
+    height: 100%; 
+    border: none;
+    display: flex; 
+    justify-content: center; 
+    flex-direction: column;
+    background-color: transparent;
+    align-items: center;
+}
+.throber {
+    border-radius: 50%;
+    aspect-ratio: 1/1;
+    width: 60px;
+    border: black solid 5px;
+    border-left: transparent solid 5px;
+    animation: throber 1s infinite;
+}
+dialog details {
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    padding: 0.5em 0.5em 0;
+    margin: 10px 0;
+}
+dialog summary {  
+    font-weight: bold;
+    margin: -0.5em -0.5em 0;
+    padding: 0.5em;
+}
+dialog details[open] {
+    padding: 0.5em; 
+}
+dialog details[open] summary {
+    border-bottom: 1px solid #aaa;
+    margin-bottom: 0.5em;
+}

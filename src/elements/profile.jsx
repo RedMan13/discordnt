@@ -3,24 +3,17 @@ import { Asset, gifOrWebp } from "../api/asset-helper";
 export class UserAvatar extends HTMLElement {
     constructor() {
         super();
-        client.askFor('Members.on', 'set', (key, member) => {
-            if (member.user_id === this.user)
-                this.render(true);
-        });
-        client.askFor('Users.on',  'set', (key, user) => {
-            if (key === this.user)
-                this.render(false);
-        });
     }
     async render(member) {
         if (!this.img) {
-            if (!member && client.askFor('guild'))
-                client.askFor('getMember', client.askFor('guild'), this.user)
+            if (!member && this.client.askFor('guild'))
+                this.client.askFor('getMember', this.client.askFor('guild'), this.user)
                     .then(member => this.render(member));
             if (typeof member === 'boolean')
-                member = await client.askFor('getMember', this.user);
-            member ??= await client.askFor('getUser', this.user);
+                member = await this.client.askFor('getMember', this.client.askFor('guild'), this.user);
+            member ??= await this.client.askFor('getUser', this.user);
         }
+        this.renderedAsMember = member;
         if (!member && !this.img) return;
         if (!this.shadowRoot) this.attachShadow({ mode: 'open' });
         for (const child of this.shadowRoot.children)
@@ -59,20 +52,28 @@ export class UserAvatar extends HTMLElement {
                 `)
                 : null}
         </div>);
+        this.rendered = true;
     }
-    static observedAttributes = ['user', 'src'];
+    static observedAttributes = ['user', 'src', 'client'];
     attributeChangedCallback(key, old, val) {
         switch (key) {
         case 'user': this.user = val; break;
         case 'src': this.img = val; break;
+        case 'client':
+            this.client = val;
+            this.client.askFor('Members.on', 'set', (key, member) => {
+                if (member.user_id === this.user)
+                    this.render(true);
+            });
+            this.client.askFor('Users.on',  'set', (key, user) => {
+                if (key === this.user && !this.renderedAsMember)
+                    this.render(false);
+            });
+            break;
         }
 
-        if (!this.rendered) return;
+        if (!this.client) return;
         this.render();
-    }
-    async connectedCallback() {
-        await this.render();
-        this.rendered = true;
     }
 }
 customElements.define('discord-user-avatar', UserAvatar);

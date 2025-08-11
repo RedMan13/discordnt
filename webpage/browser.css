@@ -1,0 +1,131 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+
+.card-wrapper {
+    font-family: "Comic Sans MS" sans-serif;
+}
+@keyframes popupAlarm {
+    from {
+        top: -752px
+    }
+    to {
+        top: -330px
+    }
+}
+.animateAlarm {
+    animation-duration: 1s;
+    animation-name: popupAlarm;
+    top: -330px;
+    position: absolute;
+}
+@keyframes popupTimer {
+    from {
+        top: -752px
+    }
+    to {
+        top: -7px
+    }
+}
+.animateTimer {
+    animation-duration: 1s;
+    animation-name: popupTimer;
+    top: -7px;
+    position: absolute;
+}
+.horizontalCenter {
+    text-align: center;
+}
+
+.browser {
+    position: absolute;
+    background-color: white;
+    border-color: darkgrey;
+    border-style: solid;
+    border-width: 1px;
+    border-bottom-right-radius: 8px;
+    border-left-width: 0;
+    bottom: 0px;
+    height: 100%;
+    overflow: auto;
+    z-index: 3;
+}
+.close-browser {
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+    background-color: white;
+    border-color: darkgrey;
+    border-style: solid;
+    border-width: 1px;
+    border-left-width: 0;
+    position: absolute;
+    z-index: 5;
+}
+.browser .folder {
+    padding-left: 1em;
+    cursor: pointer;
+}
+.browser .folder span {
+    padding-left: 0.1em;
+}
+.browser .folder.noicon {
+    padding-left: 1em;
+}
+.browser .folder.resolves {
+    padding-left: 1em;
+}
+.browser .folder.opened.noicon::before {
+    content: 'v';
+    font-weight: bold;
+    display: inline-block;
+    text-align: center;
+    height: 1em;
+    width: 1em;
+}
+.browser .folder.closed.noicon::before {
+    content: 'v';
+    font-weight: bold;
+    display: inline-block;
+    transform: rotate(-90deg);
+    text-align: center;
+    height: 1em;
+    width: 1em;
+}
+.browser .folder.opened div {
+    display: block;
+}
+.browser .folder.closed div {
+    display: none;
+}
+.browser .file {
+    padding-left: 1em;
+    cursor: pointer;
+}
+.browser .file span {
+    padding-left: 0.1em;
+}
+.browser .file.noicon {
+    padding-left: 1em;
+}
+.browser .file.selected {
+    background-color: rgb(192, 192, 192);
+    border-top-color: grey;
+    border-top-width: 1px;
+    border-top-style: solid;
+    border-bottom-color: grey;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+}
+.browser img {
+    width: 1em;
+    height: 1em;
+    object-fit: fill;
+    vertical-align: sub;
+}
+.browser {
+    overflow-y: hidden;
+}
+.guild-folder:hover {
+    background-color: rgba(0,0,0, 25%);
+}
+.guild-channel:hover {
+    background-color: rgba(0,0,0, 25%);
+}

@@ -4,9 +4,11 @@ import { TextSpoiler } from './spoiler.jsx';
 import { UserAvatar } from '../profile.jsx';
 import { Username } from '../username.jsx';
 import { toUrl, getChar, getName } from '../../emojis.js';
+import hljs from "highlight.js";
+import mime from "mime";
 
 export const mainSyntax = [
-    [/^(#{1,3})\s+(.+?)$/mi, [false, true], (level, content) => {
+    [/^(#{1,3})\s+(.+?)$/mi, [false, true], function(level, content) {
         switch (level) {
         default:
         case '#':
@@ -17,10 +19,10 @@ export const mainSyntax = [
             return <h3>{content}</h3>
         }
     }],
-    [/^-#\s+(.+?)$/mi, [true], content => <h6>{content}</h6>],
-    [/^>\s*(.+?)$/mi, [true], content => <blockquote>{content}</blockquote>],
-    [/^>>>\s*(.+?)\n\n*/mi, [true], content => <blockquote>{content}</blockquote>],
-    [/^(?: *(?:[0-9]+\.|-|\*)\s+.+?\n)+/mi, async body => {
+    [/^-#\s+(.+?)$/mi, [true], function(content) { return <h6>{content}</h6> }],
+    [/^>\s*(.+?)$/mi, [true], function(content) { return <blockquote>{content}</blockquote> }],
+    [/^>>>\s*(.+?)\n\n*/mi, [true], function(content) { return <blockquote>{content}</blockquote> }],
+    [/^(?: *(?:[0-9]+\.|-|\*)\s+.+?\n)+/mi, async function(body) {
         const unWrap = body.matchAll(/^( *)([0-9\-\*\.]+)\s+(.+?)$/gmi);
         const nesting = [];
         const layers = [];
@@ -53,20 +55,20 @@ export const mainSyntax = [
         }
         return resolveDeep(nesting);
     }],
-    [/^\*\*\*(.+?)\*\*\*/i, [true], content => <strong><em>{content}</em></strong>],
-    [/^\*\*(.+?)\*\*/i, [true], content => <strong>{content}</strong>],
-    [/^\*(.+?)\*/i, [true], content => <em>{content}</em>],
-    [/^```(?:([a-z]+)\n)?(.+?)```/is, [false, false], (lang, code) => <div class="external-code">{highlighter(lang, code)}</div>],
-    [/^``?(.+?)``?/i, [true], content => <code>{content}</code>],
-    [/^~~(.+?)~~/i, [true], content => <s>{content}</s>],
-    [/^__(.+?)__/i, [true], content => <u>{content}</u>],
-    [/^\|\|(.+?)\|\|/i, [true], content => <TextSpoiler>{content}</TextSpoiler>],
-    [/^<@!?([0-9]+)>/i, [false], async id => <span class="mention">
-        <UserAvatar style="height: 1lh; width: 1lh; display: inline-block; vertical-align: bottom;" user={id}/>
-        <Username user={id}/>
-    </span>],
-    [/^<@&([0-9]+)>/i, [false], async id => {
-        const role = client.askFor('Roles.get', id);
+    [/^\*\*\*(.+?)\*\*\*/i, [true], function(content) { return <strong><em>{content}</em></strong> }],
+    [/^\*\*(.+?)\*\*/i, [true], function(content) { return <strong>{content}</strong> }],
+    [/^\*(.+?)\*/i, [true], function(content) { return <em>{content}</em> }],
+    [/^```(?:([a-z]+)\n)?(.+?)```/is, [false, false], function(lang, code) { return <div class="external-code">{highlighter(lang, code)}</div> }],
+    [/^``?(.+?)``?/i, [true], function(content) { return <code>{content}</code> }],
+    [/^~~(.+?)~~/i, [true], function(content) { return <s>{content}</s> }],
+    [/^__(.+?)__/i, [true], function(content) { return <u>{content}</u> }],
+    [/^\|\|(.+?)\|\|/i, [true], function(content) { return <TextSpoiler>{content}</TextSpoiler> }],
+    [/^<@!?([0-9]+)>/i, [false], async function(id) { return <span class="mention">
+        <UserAvatar client={this.client} style="height: 1lh; width: 1lh; display: inline-block; vertical-align: bottom;" user={id}/>
+        <Username client={this.client} user={id}/>
+    </span> }],
+    [/^<@&([0-9]+)>/i, [false], async function(id) {
+        const role = this.client.askFor('Roles.get', id);
         const color = `#${role.color.toString(16).padStart(6, '0')}`;
         return role
             ? <span class="mention" style={`
@@ -75,33 +77,33 @@ export const mainSyntax = [
             `}><em>@</em> {role.name}</span>
             : <span class="mention"><em>@</em> Invalid Role</span>;
     }],
-    [/^<#([0-9]+)>/i, [false], async id => {
-        const channel = client.askFor('Channels.get', id);
+    [/^<#([0-9]+)>/i, [false], async function(id) {
+        const channel = this.client.askFor('Channels.get', id);
         return channel 
             ? <span class="mention"><em>#</em> {channel.name}</span>
             : <span class="mention"><em>#</em> Invalid Channel</span>;
     }],
-    [/^<(a?):([a-z_0-9]+):([0-9]+)>/i, [false, false, false], async (animated, name, id) => {
+    [/^<(a?):([a-z_0-9]+):([0-9]+)>/i, [false, false, false], async function(animated, name, id) {
         const image = Asset.CustomEmoji({ id }, animated ? 'gif' : 'png', 48);
         return <img title={name} class="emoji" src={image}/>;
     }],
-    [/^:([a-z_0-9]+):/i, [false], name => getChar(name) ? <img
+    [/^:([a-z_0-9]+):/i, [false], function(name) { return getChar(name) ? <img
         class="emoji"
         title={name}
         src={toUrl(getChar(name))}
-    /> : name],
-    [/^(\p{Emoji})/i, [false], emoji => <img
+    /> : name }],
+    [/^(\p{Emoji})/i, [false], function(emoji) { return <img
         class="emoji"
         title={getName(emoji)}
         src={toUrl(emoji)}
-    />],
-    [/^\[(.+?)\]\(<?(https?:\/\/[^\s]*)>?\)/i, [true, false], (title, url) => <a href={`/redirect?target=${url}`}>{title}</a>],
-    [/^<t:([0-9]+):([tTdDfFR])?>/i, [false, false], (time, style) => <TimeStamp t={time} s={style}></TimeStamp>],
-    [/^<?(https?:\/\/[^\s]*)>?/i, [false], url => <a href={`/redirect?target=${url}`}>{url}</a>],
-    [/^\n/i, () => <br/>],
+    /> }],
+    [/^\[(.+?)\]\(<?(https?:\/\/[^\s]*)>?\)/i, [true, false], function(title, url) { return <a href={`/redirect?target=${url}`}>{title}</a> }],
+    [/^<t:([0-9]+):([tTdDfFR])?>/i, [false, false], function(time, style) { return <TimeStamp t={time} s={style}></TimeStamp> }],
+    [/^<?(https?:\/\/[^\s]*)>?/i, [false], function(url) { return <a href={`/redirect?target=${url}`}>{url}</a> }],
+    [/^\n/i, function() { return <br/> }],
 ];
 export const writerSyntax = [
-    [/^(#{1,3})\s+(.+?)$/mi, [false, true], (level, content) => {
+    [/^(#{1,3})\s+(.+?)$/mi, [false, true], function(level, content) {
         switch (level) {
         default:
         case '#':
@@ -112,24 +114,24 @@ export const writerSyntax = [
             return <h3>### {content}</h3>
         }
     }],
-    [/^-#\s+(.+?)$/mi, [true], content => <h6>-# {content}</h6>],
-    [/^\*\*\*(.+?)\*\*\*/i, [true], content => <strong><em>***{content}***</em></strong>],
-    [/^\*\*(.+?)\*\*/i, [true], content => <strong>**{content}**</strong>],
-    [/^\*(.+?)\*/i, [true], content => <em>*{content}*</em>],
-    [/^```(?:([a-z]+)\n)?(.+?)```/is, [false, false], (lang, code) => <div>```{lang}<div class="external-code">{highlighter(lang, code)}</div>```</div>],
-    [/^``?(.+?)``?/i, [true], content => <code>`{content}`</code>],
-    [/^~~(.+?)~~/i, [true], content => <s>~~{content}~~</s>],
-    [/^__(.+?)__/i, [true], content => <u>__{content}__</u>],
-    [/^\|\|(.+?)\|\|/i, [true], content => <div style="background-color: #0004">||{content}||</div>],
-    [/^<@!?([0-9]+)>/i, [false], id => <div>
+    [/^-#\s+(.+?)$/mi, [true], function(content) { return <h6>-# {content}</h6> }],
+    [/^\*\*\*(.+?)\*\*\*/i, [true], function(content) { return <strong><em>***{content}***</em></strong> }],
+    [/^\*\*(.+?)\*\*/i, [true], function(content) { return <strong>**{content}**</strong> }],
+    [/^\*(.+?)\*/i, [true], function(content) { return <em>*{content}*</em> }],
+    [/^```(?:([a-z]+)\n)?(.+?)```/is, [false, false], function(lang, code) { return <div>```{lang}<div class="external-code">{highlighter(lang, code)}</div>```</div> }],
+    [/^``?(.+?)``?/i, [true], function(content) { return <code>`{content}`</code> }],
+    [/^~~(.+?)~~/i, [true], function(content) { return <s>~~{content}~~</s> }],
+    [/^__(.+?)__/i, [true], function(content) { return <u>__{content}__</u> }],
+    [/^\|\|(.+?)\|\|/i, [true], function(content) { return <div style="background-color: #0004">||{content}||</div> }],
+    [/^<@!?([0-9]+)>/i, [false], function(id) { return <div>
         <span style="color: #0000; display: inline-block; width: 0;">&lt;@{id}&gt;</span>
         <span class="mention">
-            <UserAvatar style="height: 1lh; width: 1lh; display: inline-block; vertical-align: bottom;" user={id}/>
-            <Username user={id}/>
+            <UserAvatar client={this.client} style="height: 1lh; width: 1lh; display: inline-block; vertical-align: bottom;" user={id}/>
+            <Username client={this.client} user={id}/>
         </span>
-    </div>],
-    [/^<@&([0-9]+)>/i, [false], async id => {
-        const role = client.askFor('Roles.get', id);
+    </div> }],
+    [/^<@&([0-9]+)>/i, [false], async function(id) {
+        const role = this.client.askFor('Roles.get', id);
         const color = `#${role.color.toString(16).padStart(6, '0')}`;
         return <div>
             <span style="color: #0000; display: inline-block; width: 0;">&lt;@&amp;{id}&gt;</span>
@@ -141,8 +143,8 @@ export const writerSyntax = [
                 : <span class="mention"><em>@</em> Invalid Role</span>}
         </div>;
     }],
-    [/^<#([0-9]+)>/i, [false], async id => {
-        const channel = client.askFor('Channels.get', id);
+    [/^<#([0-9]+)>/i, [false], async function(id) {
+        const channel = this.client.askFor('Channels.get', id);
         return <div>
             <span style="color: #0000; display: inline-block; width: 0;">&lt;#{id}&gt;</span>
             {channel 
@@ -150,37 +152,37 @@ export const writerSyntax = [
                 : <span class="mention"><em>#</em> Invalid Channel</span>}
         </div>;
     }],
-    [/^<(a?):([a-z_0-9]+):([0-9]+)>/i, [false, false, false], async (animated, name, id) => {
+    [/^<(a?):([a-z_0-9]+):([0-9]+)>/i, [false, false, false], async function(animated, name, id) {
         const image = Asset.CustomEmoji({ id }, animated ? 'gif' : 'png', 48);
         return <div>
             <span style="color: #0000; display: inline-block; width: 0;">&lt;{animated}:{name}:{id}&gt;</span>
             <img title={name} class="emoji" src={image}/>
         </div>;
     }],
-    [/^:([a-z_0-9]+):/i, [false], name => getChar(name) ? <div>
+    [/^:([a-z_0-9]+):/i, [false], function(name) { return getChar(name) ? <div>
         <span style="color: #0000; display: inline-block; width: 0;">{getChar(name)}</span>
         <img
             class="emoji"
             src={toUrl(getChar(name))}
         />
-    </div> : name],
-    [/^(\p{Emoji})/i, [false], emoji => <div>
+    </div> : name }],
+    [/^(\p{Emoji})/i, [false], function(emoji) { return <div>
         <span style="color: #0000; display: inline-block; width: 0;">{emoji}</span>
         <img
             class="emoji"
             src={toUrl(emoji)}
         />
-    </div>],
-    [/^\[(.+?)\]\(<?(https?:\/\/[^\s]*)>?\)/i, [true, false], (title, url) => <a href={`/redirect?target=${url}`}>{title}</a>],
-    [/^<t:([0-9]+):([tTdDfFR])?>/i, [false, false], (time, style) => <TimeStamp t={time} s={style}></TimeStamp>],
-    [/^<?(https?:\/\/[^\s]*)>?/i, [false], url => <a href={`/redirect?target=${url}`}>{url}</a>],
-    [/^\n/i, () => <div>
-        <span style="color: #0000; display: inline-block; width: 0;">{'\n'}</span>
+    </div> }],
+    [/^\[(.+?)\]\(<?(https?:\/\/[^\s]*)>?\)/i, [true, false], function(title, url) { return <a href={`/redirect?target=${url}`}>{title}</a> }],
+    [/^<t:([0-9]+):([tTdDfFR])?>/i, [false, false], function(time, style) { return <TimeStamp t={time} s={style}></TimeStamp> }],
+    [/^<?(https?:\/\/[^\s]*)>?/i, [false], function(url) { return <a href={`/redirect?target=${url}`}>{url}</a> }],
+    [/^\n/i, function() { return [
+        <span style="color: #0000; display: inline-block; width: 0;">{'\n'}</span>,
         <br/>
-    </div>],
+    ] }],
 ]
 /** @param {string} text */
-export async function format(text, wrap = true, syntax = mainSyntax) {
+export async function format(text, vars = {}, wrap = true, syntax = mainSyntax) {
     const out = [''];
     for (let i = 0; i < text.length; i++) {
         const test = text.slice(i);
@@ -195,16 +197,17 @@ export async function format(text, wrap = true, syntax = mainSyntax) {
             ? form[0].exec(test.slice('\n'))
             : form[0].exec(test);
         const el = match.length <= 1
-            ? await form[1](match[0])
-            : await form[2](
+            ? await form[1].call(vars, match[0])
+            : await form[2].call(vars,
                 ...(await Promise.all(match
                     .slice(1)
                     .map((m,i) => (form[1][i] ?? true)
-                        ? format(m, false)
+                        ? format(m, vars, false)
                         : m))),
                 match.groups
             );
         if (out.at(-1) === '') out.pop();
+        if (el instanceof HTMLElement) el.setAttribute('index', i);
         out.push(el, '');
         i += match[0].length -1;
         if (form[0].multiline) i++;
@@ -213,6 +216,7 @@ export async function format(text, wrap = true, syntax = mainSyntax) {
     return !wrap ? out : <div class="message-render">{out}</div>;
 }
 export { default as styles } from './md-styles.css';
+
 
 // color table
 // contains the full 256 ansi color mapping
@@ -429,12 +433,11 @@ ansi.handles = {
             break;
         }
     }
-};
-languages['ansi'] = ansi;
-export function highlighter(lang, text) {
+}; 
+export function highlighter(lang = 'txt', text) {
+    const language = mime.getExtension(lang) ?? lang;
+    const str = hljs.highlight(text, { language }).value.replaceAll('\n', '<br>');
     const wrap = <div></div>;
-    wrap.innerHTML = languages[lang]
-        ? languages[lang](text)
-        : text;
+    wrap.innerHTML = str;
     return wrap;     
 }

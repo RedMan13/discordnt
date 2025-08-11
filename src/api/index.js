@@ -11,7 +11,7 @@ if (globalThis.window?.localStorage) {
         getItem(key) {
             key = `${key}`;
             if (key === 'token') return;
-            return localStorage.get(key); 
+            return localStorage.getItem(key); 
         },
         setItem(key, value) {
             localStorage.setItem(key, value);
@@ -38,7 +38,7 @@ if (globalThis.window?.localStorage) {
 const ZLIB_SUFFIX = new Uint8Array([255, 255, 0, 0]);
 const gateway = 'wss://gateway.discord.gg';
 export function stringifyError(packet, errors, indent = '') {
-    if (errors.message) {
+    if (errors?.message) {
         if (!errors.errors) return `${errors.message} (${errors.code})`;
         let out = '';
         out += `// ${errors.message} (${errors.code})\n`;
@@ -48,8 +48,8 @@ export function stringifyError(packet, errors, indent = '') {
     const lines = [];
     lines.push(Array.isArray(packet) ? '[' : '{');
     for (const key in packet) {
-        const member = errors[key];
-        if (member._errors)
+        const member = errors?.[key];
+        if (member?._errors)
             for (const { message, code } of member._errors) 
                 lines.push(`    // ${message} (${code})`);
         switch (typeof packet[key]) {
@@ -96,6 +96,9 @@ export default class ApiInterface extends EventSource {
                 json = JSON.parse(txt);
             } catch (err) {
                 console.log('invalid json', txt, err);
+                // assume that discord will *always* send us valid json, and so an invalid json
+                // means that the decompressor buffer recieved bad or out-of-order packets
+                this.reconnect(false, 'Decompressor buffer became corrupt');
             }
             if (json) this.onpacket(json);
         }

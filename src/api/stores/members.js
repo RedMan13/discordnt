@@ -10,15 +10,15 @@ export class Members extends LimitedStore {
             'GUILD_MEMBERS_CHUNK', 'GUILD_MEMBER_UPDATE', 'GUILD_MEMBER_REMOVE'
         ];
         this.requests = {};
-        this.nonce = 0;
-        this.inTimeout = false;
+        this.sent = {};
+        setInterval(this.batchLoad.bind(this), 1500);
         this.on('set', (key, old, val) => {
             if (val && val.user) {
                 this.client.askFor('Users.set', val.user.id, val.user);
                 val.user_id = val.user.id;
                 delete val.user;
             }
-        })
+        });
     }
     notify(ev, data) {
         switch (ev) {
@@ -33,17 +33,25 @@ export class Members extends LimitedStore {
             }
             break;
         case 'GUILD_MEMBERS_CHUNK':
+            const guildId = data.guild_id;
             for (const member of data.members) {
-                member.guild_id = data.guild_id;
-                this.set(data.guild_id + member.user.id, member);
+                member.guild_id = guildId;
+                const userId = data.user?.id ?? data.user_id;
+                this.set(guildId + userId, member);
+                const promises = this.requests[guildId]?.[userId];
+                if (!promises) continue;
+                while (promises.length)
+                    promises.pop().resolve(member);
+                delete this.requests[guildId][userId];
+                delete this.sent[guildId];
             }
-            if (data.chunk_index >= data.chunk_count -1) {
-                const resolves = this.requests[data.nonce][1];
-                if (Array.isArray(resolves)) {
-                    for (const resolve of resolves)
-                        resolve();
-                } else resolves();
-                delete this.requests[data.nonce];
+            for (const userId of data.not_found) {
+                const promises = this.requests[guildId]?.[userId];
+                if (!promises) continue;
+                while (promises.length)
+                    promises.pop().reject();
+                delete this.requests[guildId][userId];
+                delete this.sent[guildId];
             }
             break;
         case 'GUILD_MEMBER_UPDATE':
@@ -56,49 +64,31 @@ export class Members extends LimitedStore {
         }
     }
     
-    async batchLoad(guild, users) {
-        let resolveFunc;
-        const promise = new Promise(resolve => resolveFunc = resolve);
-        const nonce = `${this.nonce++}`;
-        this.requests[nonce] = [null, resolveFunc];
-
-        this.client.send(GatewayOpcode.RequestGuildMembers, {
-            guild_id: guild,
-            user_ids: users
-                .reduce((c,v) => (c.includes(v) || c.push(v), c), []),
-            nonce: nonce
-        });
-
-        await promise;
-    }
-    async loadUser(guild, userId) {
-        const id = guild + userId;
-        if (!this.has(id)) {
-            if (!this.inTimeout) {
-                let resolveFunc;
-                const promise = new Promise(resolve => resolveFunc = resolve);
-                this.inTimeout = promise;
-                const nonce = `${this.nonce}`;
-                this.requests[nonce] = [userId, resolveFunc];
-                setTimeout(() => {
-                    this.inTimeout = false;
-                    const users = Object.entries(this.requests)
-                        .filter(([id]) => +id >= +nonce)
-                        .map(([nonce, resolve]) => resolve);
-                    this.batchLoad(guild, users.map(([id]) => id))
-                        .then(() => resolveFunc());
-                    this.requests[nonce][1] = users
-                        .map(([id, resolve]) => resolve)
-                }, 1);
-            }
-            await this.inTimeout;
+    batchLoad() {
+        for (const guild in this.requests) {
+            if (this.sent[guild]) continue;
+            const users = Object.keys(this.requests[guild]);
+            if (users.length <= 0) continue;
+            this.client.send(GatewayOpcode.RequestGuildMembers, {
+                guild_id: guild,
+                user_ids: users
+            });
+            this.sent[guild] = true;
         }
-        return this.get(id);
+    }
+    queueLoad(guild, userId) {
+        if (this.has(guild + userId)) return Promise.resolve(this.get(guild + userId));
+        return new Promise((resolve, reject) => {
+            this.requests[guild] ??= {};
+            this.requests[guild][userId] ??= [];
+            this.requests[guild][userId].push({ resolve, reject });
+        });
     }
     async getMember(guild, userId) {
+        if (!userId) return;
         const user = await this.client.askFor('getUser', userId);
         if (!guild || guild === this.client.askFor('user_id')) return user;
-        const member = await this.loadUser(guild, userId);
+        const member = await this.queueLoad(guild, userId);
         if (!member) return user;
         const topRole = this.client.askFor('totalRole', member.roles);
         return {
