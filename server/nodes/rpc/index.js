@@ -67,16 +67,16 @@ export default function(config, client, info) {
         case undefined:
             break;
         case 'EADDRINUSE':
-            if (port < portRange[1]) {
-                port++; // try to next port in the sequence if this port failed, keep doing this till portRange[1]
-                app.listen(port, huntPorts);
+            // try to next port in the sequence if this port failed, keep doing this till portRange[1]
+            if (++port < portRange[1]) {
+                try { app.listen(port); } catch (err) { huntPorts(err); }
                 managerConfig.api_endpoint = `http://localhost:${port}`;
                 break;
             }
         default: throw err;
         }
     }
-    app.listen(port, huntPorts);
+    try { app.listen(port); } catch (err) { huntPorts(err); }
     managerConfig.api_endpoint = `http://localhost:${port}/api`;
     app.get('/auth', (req, res) => {
         const managers = connections.filter(manager => manager.authNonce === req.query.state);

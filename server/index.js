@@ -15,8 +15,10 @@ import { Channels } from "../src/api/stores/channels.js";
 import { Guilds } from "../src/api/stores/guilds.js";  
 import { Current } from "../src/api/stores/current.js";  
 import { Members } from "../src/api/stores/members.js";  
+import { Roles } from '../src/api/stores/roles.js';
 import { parseConfig } from './parse-config.js';
 import nodes from './nodes';
+import { createCanvas, loadImage } from 'canvas';
 global.WebSocket = WebSocket;
 
 function info(message) {
@@ -24,7 +26,7 @@ function info(message) {
     notifier.notify({
         title: 'DiscordNT Node Server',
         message,
-        icon: path.resolve(publicAsset, './default.png')
+        icon: path.resolve(publicAsset, './icon.png')
     });
 }
 /* no real reason for this is there
@@ -46,13 +48,38 @@ const guilds   = new Guilds(client);   client.stores.push(guilds);
 const channels = new Channels(client); client.stores.push(channels);
 const users    = new Users(client);    client.stores.push(users);
 const members  = new Members(client);  client.stores.push(members);
+const roles    = new Roles(client);    client.stores.push(roles);
 fs.mkdirSync(usersFolder, { recursive: true });
 
 process.on('exit', () => fs.rmSync(usersFolder, { recursive: true, force: true }));
 users.on('set', async (id, old, user) => {
-    const req = await fetch(Asset.UserAvatar(user, 'png', 64));
-    const res = await req.arrayBuffer();
-    fs.writeFileSync(path.resolve(usersFolder, `${id}.png`), Buffer.from(res));
+    const avatar = await loadImage(user.avatar
+        ? Asset.UserAvatar(user, 'png', 64)
+        : Asset.DefaultUserAvatar((+id.slice(6) % 6), 'png', 64)).catch(() => {});
+    if (!avatar) return;
+    const canvas = createCanvas(avatar.width, avatar.height);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'black';
+    const top = [canvas.width / 2, 0];
+    const radius = canvas.width / 2;
+    const right = [canvas.width, canvas.height / 2];
+    const bottom = [canvas.width / 2, canvas.height];
+    const left = [0, canvas.height / 2];
+    const topLeft = [0,0];
+    const topRight = [canvas.width, 0];
+    const bottomRight = [canvas.width, canvas.height];
+    const bottomLeft = [0, canvas.height];
+    ctx.beginPath();
+    ctx.moveTo(...top);
+    ctx.arcTo(...topRight, ...right, radius);
+    ctx.arcTo(...bottomRight, ...bottom, radius);
+    ctx.arcTo(...bottomLeft, ...left, radius);
+    ctx.arcTo(...topLeft, ...top, radius);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-in';
+    ctx.drawImage(avatar, 0,0);
+    fs.writeFileSync(path.resolve(usersFolder, `${id}.png`), canvas.toBuffer('image/png'));
 });
 users.on('remove', id => fs.rm(path.resolve(usersFolder, `${id}.png`)));
 client.on('open', () => {
