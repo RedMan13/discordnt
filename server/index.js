@@ -85,10 +85,18 @@ users.on('remove', id => fs.rm(path.resolve(usersFolder, `${id}.png`)));
 client.on('open', () => {
     info('Connecting to the discord gateway.');
 });
+let attempts = 0;
 client.on('invalid', () => {
-    info('Couldnt connect to the discord gateway. Closing server.');
-    process.exit();
+    if (++attempts >= config.maxAttempts) {
+        info('Couldnt connect to the discord gateway. Closing server');
+        process.exit();
+        return;
+    }
+    info(`Couldnt connect to the discord gateway. Trying again in ${config.waitTime} second${config.waitTime !== 1 ? 's' : ''} (${attempts}/${config.maxAttempts})`);
+    setTimeout(() => client.reconnect(true, 'Attempting reconnect after invalid'), config.waitTime * 1000);
 });
+client.on('close', () => info('Discord gateway closed unexpectedly.'));
+client.on('error', () => info('Discord gateway fell into an error.'))
 client.on('READY', async () => {
     info('Successfully connected to the discord gateway.');
 

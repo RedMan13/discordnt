@@ -32,7 +32,7 @@ const connections = [];
  * @param {string} clientId 
  * @returns {object|number}
  */
-export async function createConnection(client, encoding, version, clientId) {
+export async function createConnection(client, encoding, version, clientId, rules) {
     console.log('creating RPC client')
     if (!(version in versions)) return [RPCCloseCodes.InvalidVersion];
     if (!(encoding in encodings)) return [RPCCloseCodes.InvalidEncoding];
@@ -41,6 +41,42 @@ export async function createConnection(client, encoding, version, clientId) {
     
     /** @type {IRPCApi} */
     const manager = new versions[version](client, clientId, managerConfig, appData);
+    // gar gant
+    for (const permission in manager.permissions) {
+        manager.permissions[permission] = Array.isArray(rules.permissions[permission])
+            ? rules.permissions[permission].includes(clientId)
+            : rules.permissions[permission] === 'no'
+                ? true
+                : rules.permissions[permission] === 'yes'
+                    ? false
+                    : rules.permissions[permission] === 'whitelist-only'
+                        ? !rules.whitelistedApplicationIds.includes(clientId)
+                        : rules.permission[permission] === 'blacklist-only'
+                            ? !rules.blacklistedApplicationIds.includes(clientId)
+                            : false;
+        if (!permission.startsWith('when')) {
+            const val = !rules.ignoreRequests.includes(permission);
+            switch (permission) {
+            case 'readGuilds':
+                manager.throwsBlocked['GET_GUILD'] = val;
+                manager.throwsBlocked['GET_GUILDS'] = val;
+                break;
+            case 'readChannels':
+                manager.throwsBlocked['GET_CHANNEL'] = val;
+                manager.throwsBlocked['GET_CHANNELS'] = val;
+                break;
+            case 'joinVoiceChannels': manager.throwsBlocked['SELECT_VOICE_CHANNEL'] = val; break;
+            case 'readVoiceChannels': manager.throwsBlocked['GET_SELECTED_VOICE_CHANNEL'] = val; break;
+            case 'readVoiceSettings': manager.throwsBlocked['GET_VOICE_SETTINGS'] = val; break;
+            case 'writeVoiceSettings': manager.throwsBlocked['SET_VOICE_SETTINGS'] = val; break;
+            case 'changeOthersVoiceSettings': manager.throwsBlocked['SET_USER_VOICE_SETTINGS'] = val; break;
+            case 'addHardwareMetadata': manager.throwsBlocked['SET_CERTIFIED_DEVICES'] = val; break;
+            case 'writeActivityState': manager.throwsBlocked['SET_ACTIVITY'] = val; break;
+            case 'acceptActivityInvites': manager.throwsBlocked['SEND_ACTIVITY_JOIN_INVITE'] = val; break;
+            case 'rejectActivityInvites': manager.throwsBlocked['CLOSE_ACTIVITY_REQUEST'] = val; break;
+            }
+        }
+    }
     connections.push(manager);
     console.log('created RPC client')
     return [encodings[encoding].encode({
@@ -98,7 +134,7 @@ export default function(config, client, info) {
     app.ws('/', async (req, res) => {
         console.log('recieved WebSocket RPC request');
         const { encoding = 'json', v: version, client_id } = req.query;
-        const [out, connection] = await createConnection(encoding, version, client_id);
+        const [out, connection] = await createConnection(encoding, version, client_id, config);
         if (typeof out === 'number') {
             console.log(`rejected RPC connection for ${RPCCloseCodes[out]}`);
             return res.reject(out);
@@ -161,7 +197,7 @@ export default function(config, client, info) {
             const packet = encodings[encoding].decode(str);
             switch (op) {
             case RPCIPCOpcodes.HANDSHAKE:
-                const [out, connect] = await createConnection(client, packet.encoding ?? encoding, packet.v, packet.client_id);
+                const [out, connect] = await createConnection(client, packet.encoding ?? encoding, packet.v, packet.client_id, config);
                 if (typeof out === 'number') {
                     console.log(`rejected RPC connection for ${RPCCloseCodes[out]}`);
                     send(RPCIPCOpcodes.CLOSE, encodings[encoding].encode(out));

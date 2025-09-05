@@ -31,6 +31,60 @@ export default class RPCManagerV1 extends EventSource {
         ACTIVITY_SPECTATE:       false, // sent when the user clicks a Rich Presence spectate invite in chat to spectate a game
         ACTIVITY_JOIN_REQUEST:   false, // sent when the user receives a Rich Presence Ask to Join request
     };
+    permissions = {
+        readGuilds: false,
+        readMembers: false,
+        whenGuildJoined: false,
+        whenGuildUpdates: false,
+        readChannels: false,
+        readDms: false,
+        whenChannelCreated: false,
+        joinVoiceChannels: false,
+        whenVoiceJoined: false,
+        whenOthersJoinVoice: false,
+        whenOthersChangeVoiceSettings: false,
+        whenOthersLeaveVoice: false,
+        whenVoiceSpeaks: false,
+        whenVoiceStopsSpeaking: false,
+        readVoiceChannels: false,
+        readVoiceSettings: false,
+        writeVoiceSettings: false,
+        whenVoiceSettingsChanged: false,
+        whenVoiceConnectionChanged: false,
+        changeOthersVoiceSettings: false,
+        addHardwareMetadata: false,
+        writeActivityState: false,
+        acceptActivityInvites: false,
+        rejectActivityInvites: false,
+        whenMessagesCreated: false,
+        whenMessagesEdited: false,
+        whenMessagesDeleted: false,
+        whenNotificationFired: false,
+        whenActivityJoinPressed: false,
+        whenActivitySpectatePressed: false,
+        whenActivityJoinRequestPressed: false
+    };
+    throwsBlocked = {
+        DISPATCH: true,
+        AUTHORIZE: true,
+        AUTHENTICATE: true,
+        GET_GUILD: true,
+        GET_GUILDS: true,
+        GET_CHANNEL: true,
+        GET_CHANNELS: true,
+        SUBSCRIBE: true,
+        UNSUBSCRIBE: true,
+        SET_USER_VOICE_SETTINGS: true,
+        SELECT_VOICE_CHANNEL: true,
+        GET_SELECTED_VOICE_CHANNEL: true,
+        SELECT_TEXT_CHANNEL: true,
+        GET_VOICE_SETTINGS: true,
+        SET_VOICE_SETTINGS: true,
+        SET_CERTIFIED_DEVICES: true,
+        SET_ACTIVITY: true,
+        SEND_ACTIVITY_JOIN_INVITE: true,
+        CLOSE_ACTIVITY_REQUEST: true
+    };
     /** @type {{ [key: number]: string }} */
     pids = {};
     /** @type {string[]} */
@@ -56,6 +110,28 @@ export default class RPCManagerV1 extends EventSource {
         this.app = app;
 
         this.apiReqs = {};
+
+        this.client.on('MESSAGE_CREATE', evt => {
+            if (!this.subscriptions.MESSAGE_CREATE[evt.channel_id]) return;
+            this.fireOut('MESSAGE_CREATE', {
+                channel_id: evt.channel_id,
+                message: evt
+            });
+        });
+        this.client.on('MESSAGE_UPDATE', evt => {
+            if (!this.subscriptions.MESSAGE_UPDATE[evt.channel_id]) return;
+            this.fireOut('MESSAGE_CREATE', {
+                channel_id: evt.channel_id,
+                message: evt
+            });
+        });
+        this.client.on('MESSAGE_DELETE', evt => {
+            if (!this.subscriptions.MESSAGE_DELETE[evt.channel_id]) return;
+            this.fireOut('MESSAGE_CREATE', {
+                channel_id: evt.channel_id,
+                message: evt
+            });
+        });
     }
     fromApi(callPath, body) {
         if (this.apiReqs[callPath]) return this.apiReqs[callPath];
@@ -110,6 +186,21 @@ export default class RPCManagerV1 extends EventSource {
             evt
         });
     }
+    makeError(cmd, nonce, code) {
+        return {
+            cmd,
+            data: {
+                code,
+                message: 'bad'
+            },
+            evt: 'ERROR',
+            nonce
+        };
+    }
+    handleNoPerms(cmd, nonce) {
+        if (!this.throwsBlocked[cmd]) return;
+        return this.emitError(cmd, nonce, 4006);
+    }
     async execute({ cmd, args, evt, nonce }) {
         let res;
         switch (cmd) {
@@ -132,10 +223,269 @@ export default class RPCManagerV1 extends EventSource {
         }
         case 'AUTHENTICATE': {
             this.#token = args.access_token;
-            const res = await this.fromApi('GET /oauth2/@me').catch(err => err);
+            const self = await this.fromApi('GET /oauth2/@me').catch(err => err);
+            if (!self.scopes.includes('rpc'))
+                return this.handleNoPerms(cmd, nonce);
+            for (const scope of self.scopes) {
+                switch (scope) {
+                case 'guilds':
+                    this.permissions.readGuilds &&= true;
+                    this.permissions.whenGuildJoined &&= true;
+                    this.permissions.whenGuildUpdates &&= true;
+                    break;
+                case 'dm_channels.read': this.permissions.readDms &&= true; break;
+                case 'messages.read':
+                    this.permissions.whenMessagesCreated &&= true;
+                    this.permissions.whenMessagesDeleted &&= true;
+                    this.permissions.whenMessagesEdited &&= true;
+                    this.permissions.readChannels &&= true;
+                    break;
+                case 'rpc.activities.write':
+                    this.permissions.writeActivityState &&= true;
+                    this.permissions.acceptActivityInvites &&= true;
+                    this.permissions.rejectActivityInvites &&= true;
+                    this.permissions.whenActivityJoinPressed &&= true;
+                    this.permissions.whenActivityJoinRequestPressed &&= true;
+                    this.permissions.whenActivitySpectatePressed &&= true;
+                    break;
+                case 'rpc.notifications.read': this.permissions.whenNotificationFired &&= true; break;
+                case 'rpc.voice.read':
+                    this.permissions.readVoiceSettings &&= true;
+                    this.permissions.whenVoiceSettingsChanged &&= true;
+                    break;
+                case 'rpc.voice.write': this.permissions.writeVoiceSettings &&= true; break;
+                case 'voice':
+                    this.permissions.readVoiceChannels &&= true;
+                    this.permissions.whenOthersChangeVoiceSettings &&= true;
+                    this.permissions.whenOthersJoinVoice &&= true;
+                    this.permissions.whenOthersLeaveVoice &&= true;
+                    this.permissions.whenVoiceConnectionChanged &&= true;
+                    this.permissions.whenVoiceJoined &&= true;
+                    this.permissions.whenVoiceSettingsChanged &&= true;
+                    this.permissions.whenVoiceSpeaks &&= true;
+                    this.permissions.whenVoiceStopsSpeaking &&= true;
+                    break;
+                }
+            }
+            res = self;
             break;
         }
+        case 'GET_GUILD':
+            if (!this.permissions.readGuilds) return this.handleNoPerms(cmd, nonce);
+            const guild = this.client.askFor('Guilds.get', args.guild_id);
+            if (!guild) return this.makeError(cmd, nonce, 4003);
+            res = {
+                id: guild.id,
+                name: guild.name,
+                icon_url: guild.icon_url,
+                members: []
+            }
+            break;
+        case 'GET_GUILDS':
+            if (!this.permissions.readGuilds) return this.handleNoPerms(cmd, nonce);
+            const guilds = this.client.askFor('Guilds.values')
+                .map(guild => ({ id: guild.id, name: guild.name }));
+            res = { guilds };
+            break;
+        case 'GET_CHANNEL':
+            if (!this.permissions.readChannels) return this.handleNoPerms(cmd, nonce);
+            const channel = this.client.askFor('Channels.get', args.channel_id);
+            if (!channel) return this.makeError(cmd, nonce, 4005);
+            res = {
+                id: channel.id,
+                guild_id: channel.guild_id,
+                name: channel.name,
+                type: channel.type,
+                topic: channel.topic,
+                bitrate: channel.bitrate,
+                user_limit: channel.user_limit || 0,
+                position: channel.position,
+                voice_states: [], // how???????
+                messages: await this.client.fromApi(`GET /channels/${channel.id}/messages`)
+            }
+            break;
+        case 'GET_CHANNELS':
+            if (!this.permissions.readChannels) return this.handleNoPerms(cmd, nonce);
+            const channels = this.client.askFor('Channels.values')
+                .map(channel => ({ id: channel.id, name: channel.name, type: channel.type }));
+            res = { channels };
+            break;
+        case 'SUBSCRIBE':
+            switch (evt) {
+            case 'GUILD_STATUS':
+                if (!this.permissions.whenGuildUpdates) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.GUILD_STATUS[args.guild_id] = true;
+                break;
+            case 'GUILD_CREATE':
+                if (!this.permissions.whenGuildJoined) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.GUILD_CREATE = true;
+                break;
+            case 'CHANNEL_CREATE':
+                if (!this.permissions.whenChannelCreated) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.CHANNEL_CREATE = true;
+                break;
+            case 'VOICE_CHANNEL_SELECT':
+                if (!this.permissions.whenVoiceJoined) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.VOICE_CHANNEL_SELECT = true;
+                break;
+            case 'VOICE_STATE_CREATE':
+                if (!this.permissions.whenOthersJoinVoice) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.VOICE_STATE_CREATE[args.channel_id] = true;
+                break;
+            case 'VOICE_STATE_UPDATE':
+                if (!this.permissions.whenOthersChangeVoiceSettings) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.VOICE_STATE_UPDATE[args.channel_id] = true;
+                break;
+            case 'VOICE_STATE_DELETE':
+                if (!this.permissions.whenOthersLeaveVoice) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.VOICE_STATE_DELETE[args.channel_id] = true;
+                break;
+            case 'VOICE_SETTINGS_UPDATE':
+                if (!this.permissions.whenVoiceSettingsChanged) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.VOICE_SETTINGS_UPDATE = true;
+                break;
+            case 'VOICE_CONNECTION_STATUS':
+                if (!this.permissions.whenVoiceConnectionChanged) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.VOICE_CONNECTION_STATUS = true;
+                break;
+            case 'SPEAKING_START':
+                if (!this.permissions.whenVoiceSpeaks) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.SPEAKING_START[args.channel_id] = true;
+                break;
+            case 'SPEAKING_STOP':
+                if (!this.permissions.whenVoiceStopsSpeaking) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.SPEAKING_STOP[args.channel_id] = true;
+                break;
+            case 'MESSAGE_CREATE':
+                if (!this.permissions.whenMessagesCreated) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.MESSAGE_CREATE[args.channel_id] = true;
+                break;
+            case 'MESSAGE_UPDATE':
+                if (!this.permissions.whenMessagesEdited) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.MESSAGE_UPDATE[args.channel_id] = true;
+                break;
+            case 'MESSAGE_DELETE':
+                if (!this.permissions.whenMessagesDeleted) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.MESSAGE_DELETE[args.channel_id] = true;
+                break;
+            case 'NOTIFICATION_CREATE':
+                if (!this.permissions.whenNotificationFired) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.NOTIFICATION_CREATE = true;
+                break;
+            case 'ACTIVITY_JOIN':
+                if (!this.permissions.whenActivityJoinPressed) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.ACTIVITY_JOIN = true;
+                break;
+            case 'ACTIVITY_SPECTATE':
+                if (!this.permissions.whenActivitySpectatePressed) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.ACTIVITY_SPECTATE = true;
+                break;
+            case 'ACTIVITY_JOIN_REQUEST':
+                if (!this.permissions.whenActivityJoinRequestPressed) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.ACTIVITY_JOIN_REQUEST = true;
+                break;
+            }
+            res = { evt };
+            break;
+        case 'UNSUBSCRIBE':
+            switch (evt) {
+            case 'GUILD_STATUS':
+                if (!this.permissions.whenGuildUpdates) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.GUILD_STATUS[args.guild_id] = false;
+                break;
+            case 'GUILD_CREATE':
+                if (!this.permissions.whenGuildJoined) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.GUILD_CREATE = false;
+                break;
+            case 'CHANNEL_CREATE':
+                if (!this.permissions.whenChannelCreated) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.CHANNEL_CREATE = false;
+                break;
+            case 'VOICE_CHANNEL_SELECT':
+                if (!this.permissions.whenVoiceJoined) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.VOICE_CHANNEL_SELECT = false;
+                break;
+            case 'VOICE_STATE_CREATE':
+                if (!this.permissions.whenOthersJoinVoice) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.VOICE_STATE_CREATE[args.channel_id] = false;
+                break;
+            case 'VOICE_STATE_UPDATE':
+                if (!this.permissions.whenOthersChangeVoiceSettings) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.VOICE_STATE_UPDATE[args.channel_id] = false;
+                break;
+            case 'VOICE_STATE_DELETE':
+                if (!this.permissions.whenOthersLeaveVoice) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.VOICE_STATE_DELETE[args.channel_id] = false;
+                break;
+            case 'VOICE_SETTINGS_UPDATE':
+                if (!this.permissions.whenVoiceSettingsChanged) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.VOICE_SETTINGS_UPDATE = false;
+                break;
+            case 'VOICE_CONNECTION_STATUS':
+                if (!this.permissions.whenVoiceConnectionChanged) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.VOICE_CONNECTION_STATUS = false;
+                break;
+            case 'SPEAKING_START':
+                if (!this.permissions.whenVoiceSpeaks) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.SPEAKING_START[args.channel_id] = false;
+                break;
+            case 'SPEAKING_STOP':
+                if (!this.permissions.whenVoiceStopsSpeaking) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.SPEAKING_STOP[args.channel_id] = false;
+                break;
+            case 'MESSAGE_CREATE':
+                if (!this.permissions.whenMessagesCreated) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.MESSAGE_CREATE[args.channel_id] = false;
+                break;
+            case 'MESSAGE_UPDATE':
+                if (!this.permissions.whenMessagesEdited) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.MESSAGE_UPDATE[args.channel_id] = false;
+                break;
+            case 'MESSAGE_DELETE':
+                if (!this.permissions.whenMessagesDeleted) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.MESSAGE_DELETE[args.channel_id] = false;
+                break;
+            case 'NOTIFICATION_CREATE':
+                if (!this.permissions.whenNotificationFired) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.NOTIFICATION_CREATE = false;
+                break;
+            case 'ACTIVITY_JOIN':
+                if (!this.permissions.whenActivityJoinPressed) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.ACTIVITY_JOIN = false;
+                break;
+            case 'ACTIVITY_SPECTATE':
+                if (!this.permissions.whenActivitySpectatePressed) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.ACTIVITY_SPECTATE = false;
+                break;
+            case 'ACTIVITY_JOIN_REQUEST':
+                if (!this.permissions.whenActivityJoinRequestPressed) return this.handleNoPerms(cmd, nonce);
+                this.subscriptions.ACTIVITY_JOIN_REQUEST = false;
+                break;
+            }
+            res = { evt };
+            break;
+        case 'SET_USER_VOICE_SETTINGS':
+            if (!this.permissions.writeVoiceSettings) return this.handleNoPerms(cmd, nonce);
+            break;
+        case 'SELECT_VOICE_CHANNEL':
+            if (!this.permissions.joinVoiceChannels) return this.handleNoPerms(cmd, nonce);
+            break;
+        case 'GET_SELECTED_VOICE_CHANNEL':
+            if (!this.permissions.readChannels) return this.handleNoPerms(cmd, nonce);
+            break;
+        case 'SELECT_TEXT_CHANNEL':
+            if (!this.permissions.readChannels) return this.handleNoPerms(cmd, nonce);
+            break;
+        case 'GET_VOICE_SETTINGS':
+            if (!this.permissions.readVoiceSettings) return this.handleNoPerms(cmd, nonce);
+            break;
+        case 'SET_VOICE_SETTINGS':
+            if (!this.permissions.writeVoiceSettings) return this.handleNoPerms(cmd, nonce);
+            break;
+        case 'SET_CERTIFIED_DEVICES':
+            break;
         case 'SET_ACTIVITY': {
+            if (!this.permissions.writeActivityState) return this.handleNoPerms(cmd, nonce);
             if (!args?.activity) args = { activity: args };
             if (!args.activity) {
                 for (const id in this.pids)
@@ -165,6 +515,12 @@ export default class RPCManagerV1 extends EventSource {
             });
             return;
         }
+        case 'SEND_ACTIVITY_JOIN_INVITE':
+            if (!this.permissions.acceptActivityInvites) return this.handleNoPerms(cmd, nonce);
+            break;
+        case 'CLOSE_ACTIVITY_REQUEST':
+            if (!this.permissions.rejectActivityInvites) return this.handleNoPerms(cmd, nonce);
+            break;
         }
         return {
             cmd,

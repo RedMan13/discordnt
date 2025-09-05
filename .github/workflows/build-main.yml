@@ -30,7 +30,7 @@ jobs:
           username: 'godslayerakp'
           password: '${{ secrets.SSH_PASSWORD }}'
           local_path: './dist/discordnt.html'
-          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_html'
+          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_nodejs/dist'
       - name: Push linux server to Site
         uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
@@ -38,7 +38,7 @@ jobs:
           username: 'godslayerakp'
           password: '${{ secrets.SSH_PASSWORD }}'
           local_path: './dist/linux.zip'
-          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_html/discordnt-server'
+          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_nodejs/dist/discordnt-server'
       - name: Push mac server to Site
         uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
@@ -46,7 +46,7 @@ jobs:
           username: 'godslayerakp'
           password: '${{ secrets.SSH_PASSWORD }}'
           local_path: './dist/mac.zip'
-          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_html/discordnt-server'
+          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_nodejs/dist/discordnt-server'
       - name: Push windows server to Site
         uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
@@ -54,7 +54,7 @@ jobs:
           username: 'godslayerakp'
           password: '${{ secrets.SSH_PASSWORD }}'
           local_path: './dist/windows.zip'
-          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_html/discordnt-server'
+          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_nodejs/dist/discordnt-server'
       - name: Push server version to Site
         uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
@@ -62,4 +62,4 @@ jobs:
           username: 'godslayerakp'
           password: '${{ secrets.SSH_PASSWORD }}'
           local_path: './dist/appver.txt'
-          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_html/discordnt-server'
+          remote_path: '/usr/home/godslayerakp/domains/godslayerakp.serv00.net/public_nodejs/dist/discordnt-server'

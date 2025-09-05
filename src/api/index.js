@@ -296,7 +296,7 @@ export default class ApiInterface extends EventSource {
     }
     onerror() {
         this.emit('error');
-        this.reconnect(false, 'websocket errored');
+        setTimeout(() => this.reconnect(false, 'websocket errored'), 1000);
     }
     onclose() {
         this.emit('close');

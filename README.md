@@ -32,3 +32,31 @@ To initialize the server you need to
 - if you instead see `Couldnt connect to the discord gateway. Closing server.`, then either discord wont let the server connect or the provided token is invalid. try the steps over again just to be sure, and after that please open an issue at https://github.com/RedMan13/discordnt/issues.
 
 Currently, setting up auto-startup isnt here at all. instead you need to manually setup a secondary script to set the current working directory to the correct folder.
+
+# TODO
+- [x] Message rendering
+  - [x] User name, badges, and role icon rendering (with role color)
+  - [x] User profile picture and decoration
+  - [x] Text content
+  - [x] Graphical attachments
+  - [ ] Pure text attachments
+  - [ ] Generic attachments
+  - [x] Reply content
+  - [ ] Poll messages
+  - [x] Embeds
+  - [ ] Message forwarding
+- [x] Server rendering, and selection
+- [x] Text channel rendering, and selection
+- [ ] Message searching
+- [ ] Members list
+- [ ] Server profile previewing
+- [ ] Global profile previewing
+- [ ] Pins listing
+- [ ] Message management
+- [ ] Server management
+- [ ] Voice chatting
+- [ ] Friends list management
+- [ ] Private messages
+- [ ] Working login page
+- [ ] Account settings control
+- [ ] Application presence based activities

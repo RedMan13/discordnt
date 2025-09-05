@@ -1,12 +1,16 @@
 # your discord account token, this line is why this whole app ay be a safety violation
 token: ''
+# how many attempts should be made to connect to discord before giving up and exiting
+max-attempts: 5
+# for how long should the server wait before making another attempt
+wait-time: 1
 # fire push notifications as discord usually would
 notifications:
   # if push notifications should be sent or not
   enabled: yes
   # the url to redirect to when the notification is clicked
   # supported keys are {guild_id} {channel_id} and {message_id}
-  redirect-url: https://godslayerakp.serv00.net/discordnt.html#{channel_id}
+  redirect-url: https://discord.com/channel/{guild_id}/{channel_id}
   # the folder where all pfps used in notifications are to be written
   pfp-cache: './users'
 # settings for discord game integration, such as activities and in-game notifications
@@ -15,6 +19,7 @@ rpc:
   enabled: yes
   # what any given RPC app is allowed to do or recieve
   # anything that has when in the name is something we send to the client and so isnt handled by error-requests
+  # possible values for all entries are: no, yes, blacklist-only, whitelist-only, or a list of application ids to allow. defaults for all permissions are yes
   permissions:
     # read-guilds: no
     # when-guild-joined: no

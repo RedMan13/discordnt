@@ -284,4 +284,20 @@ export class IndexedMap extends EventSource {
                 return true;
         return false;
     }
+
+    /**
+     * Returns all entries, in order, from inside this map
+     * @returns {[string, any][]}
+     */
+    entries() { return this.#keys.map(key => [key, this.#items[key]]); }
+    /**
+     * Returns all keys, in order, from inside this map
+     * @returns {string[]}
+     */
+    keys() { return [...this.#keys] }
+    /**
+     * Returns all values, in order, from inside this map
+     * @returns {any[]}
+     */
+    values() { return this.#keys.map(key => this.#items[key]); }
 }
