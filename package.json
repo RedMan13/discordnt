@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "build": "webpack",
+    "build": "npm run build-web && npm run build-server",
     "build-server": "rm -rf ./dist && build ./server/index.js && ./make-server.sh",
     "build-web": "webpack",
     "dev": "webpack-dev-server --host 0.0.0.0 --port 3000",
