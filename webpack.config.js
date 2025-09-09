@@ -1,7 +1,7 @@
 const path = require('path');
 const HTMLWebpackPlugin = require('html-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
-global.nostd = false; // builder module thingy, not actual something webpack handles
+global.nostd = true; // builder module thingy, not actual something webpack handles
 
 const babelLoader = [
     /* // isnt necessary for webpack to work, and is currently just creating worse issues
