@@ -1,4 +1,5 @@
 {
+  "name": "discordnt",
   "scripts": {
     "build": "npm run build-web && npm run build-server",
     "build-server": "rm -rf ./dist && build ./server/index.js --no-token-debug true && ./make-server.sh",
